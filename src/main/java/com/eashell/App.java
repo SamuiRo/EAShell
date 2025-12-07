@@ -48,7 +48,7 @@ public class App extends Application {
 
         loadEntries();
 
-        primaryStage.setTitle("EA Terminal");
+        primaryStage.setTitle("EA Shell");
 
         BorderPane root = new BorderPane();
         root.setStyle("-fx-background-color: #0a0e27;");
