@@ -110,14 +110,22 @@ public class MainWindow {
             return;
         }
 
+        // Спочатку створюємо ProcessRunner (навіть без outputArea і tab)
+        ProcessRunner runner = new ProcessRunner(entry, null, null);
+
+        // Створюємо вкладку, передаючи runner
         Tab outputTab = outputPanel.createOutputTab(
                 entry,
-                null, // Temporary, will be replaced
+                runner,  // Тепер передаємо справжній runner!
                 this::updateScriptStatus
         );
 
+        // Отримуємо outputArea з вкладки
         TextArea outputArea = outputPanel.getOutputAreaFromTab(outputTab);
-        ProcessRunner runner = new ProcessRunner(entry, outputArea, outputTab);
+
+        // Оновлюємо runner з правильними посиланнями
+        runner.setOutputArea(outputArea);
+        runner.setTab(outputTab);
 
         runningProcesses.put(entry.getName(), runner);
         updateScriptStatus(entry.getName(), true);

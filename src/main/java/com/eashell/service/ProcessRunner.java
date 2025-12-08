@@ -14,8 +14,8 @@ import java.util.concurrent.TimeUnit;
 
 public class ProcessRunner implements Runnable {
     private final ScriptEntry entry;
-    private final TextArea outputArea;
-    private final Tab tab;
+    private TextArea outputArea;
+    private Tab tab;
     private Process process;
     private volatile boolean running = true;
     private final StringBuilder outputBuffer = new StringBuilder();
@@ -148,5 +148,13 @@ public class ProcessRunner implements Runnable {
 
     public boolean isRunning() {
         return running && process != null && process.isAlive();
+    }
+
+    public void setOutputArea(TextArea outputArea) {
+        this.outputArea = outputArea;
+    }
+
+    public void setTab(Tab tab) {
+        this.tab = tab;
     }
 }
