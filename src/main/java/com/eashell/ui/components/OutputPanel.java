@@ -47,13 +47,21 @@ public class OutputPanel extends VBox {
         outputArea.setStyle(StyleManager.getOutputAreaStyle());
         VBox.setVgrow(outputArea, Priority.ALWAYS);
 
+        // Передаємо runner в createControlBox
         HBox controlBox = createControlBox(runner, outputArea);
 
         tabContent.getChildren().addAll(outputArea, controlBox);
         outputTab.setContent(tabContent);
 
+        // Зберігаємо runner в userData Tab для доступу при закритті
+        outputTab.setUserData(runner);
+
         outputTab.setOnClosed(e -> {
-            runner.stop();
+            // Отримуємо runner з userData
+            ProcessRunner tabRunner = (ProcessRunner) outputTab.getUserData();
+            if (tabRunner != null) {
+                tabRunner.stop();
+            }
             onStatusChange.accept(entry.getName(), false);
         });
 
@@ -67,7 +75,12 @@ public class OutputPanel extends VBox {
         HBox controlBox = new HBox(8);
 
         Button stopBtn = StyleManager.createSmallButton("⏹ STOP", StyleManager.ACCENT_RED);
-        stopBtn.setOnAction(e -> runner.stop());
+        stopBtn.setOnAction(e -> {
+            // Перевіряємо чи runner не null перед викликом stop()
+            if (runner != null) {
+                runner.stop();
+            }
+        });
 
         Button clearBtn = StyleManager.createSmallButton("🗑 CLEAR", StyleManager.ACCENT_BLUE);
         clearBtn.setOnAction(e -> outputArea.clear());
