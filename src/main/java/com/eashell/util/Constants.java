@@ -21,9 +21,9 @@ public class Constants {
 
     // UI texts
     public static final String APP_TITLE = "EA Shell";
-    public static final String TITLE_LABEL = "⚡ DEV LAUNCHER";
-    public static final String SCRIPTS_HEADER = "📋 SAVED SCRIPTS";
-    public static final String OUTPUT_HEADER = "📟 OUTPUT CONSOLE";
+    public static final String TITLE_LABEL = "⚡ Shell";
+    public static final String SCRIPTS_HEADER = "📋 SCRIPTS";
+    public static final String OUTPUT_HEADER = "📟 CONSOLE";
 
     // Emojis
     public static final String STATUS_RUNNING = "🟢";

@@ -39,7 +39,9 @@ public class ProcessRunner implements Runnable {
                 pb.directory(new File(entry.getWorkingDir()));
 
                 if (System.getProperty("os.name").toLowerCase().contains("windows")) {
-                    pb.command("cmd.exe", "/c", command);
+                    // Використовуємо PowerShell замість cmd.exe
+//                    pb.command("cmd.exe", "/c", command);
+                    pb.command("powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", command);
                 } else {
                     pb.command("sh", "-c", command);
                 }
