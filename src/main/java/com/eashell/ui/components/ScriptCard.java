@@ -13,12 +13,32 @@ import javafx.scene.effect.DropShadow;
 
 import java.util.function.Consumer;
 
+/**
+ * SCRIPT CARD (INDIVIDUAL LIST ITEM)
+ *
+ * Visually represents one script in the left panel.
+ * Each card contains name, path, commands, and control buttons.
+ *
+ * Visual card structure:
+ * ┌────────────────────────────────────────┐
+ * │ Script Name ⚫        (name + status)  │
+ * │ 📁 /path/to/folder   (working dir)    │
+ * │ ▶ npm install        (command 1)      │
+ * │ ▶ npm start          (command 2)      │
+ * │                                        │
+ * │ [▶ RUN] [✎ EDIT] [✖ DELETE] (buttons) │
+ * └────────────────────────────────────────┘
+ *
+ * Statuses:
+ * ⚫ - stopped (gray)
+ * 🟢 - running (green/purple with glow)
+ */
 public class ScriptCard extends VBox {
-    private final ScriptEntry entry;
-    private final Label statusLabel;
-    private final Consumer<ScriptEntry> onRun;
-    private final Consumer<ScriptEntry> onEdit;
-    private final Consumer<ScriptEntry> onDelete;
+    private final ScriptEntry entry;           // Script data
+    private final Label statusLabel;           // Status indicator (⚫/🟢)
+    private final Consumer<ScriptEntry> onRun; // Callback when RUN is clicked
+    private final Consumer<ScriptEntry> onEdit; // Callback when EDIT is clicked
+    private final Consumer<ScriptEntry> onDelete; // Callback when DELETE is clicked
 
     public ScriptCard(ScriptEntry entry,
                       Consumer<ScriptEntry> onRun,
@@ -33,84 +53,140 @@ public class ScriptCard extends VBox {
         initializeCard();
     }
 
+    /**
+     * INITIALIZE CARD VISUAL ELEMENTS
+     */
     private void initializeCard() {
+        // Spacing between elements inside card
         setSpacing(8);
         setPadding(new Insets(15));
+
+        // === CARD STYLING ===
+        // Dark background with gradient and rounded corners
         setStyle(StyleManager.getCardStyle());
 
+        // === SHADOW EFFECT ===
+        // Green-purple shadow around card (inspired by Keqing from Genshin Impact)
         DropShadow shadow = new DropShadow();
-        shadow.setColor(Color.rgb(0, 255, 65, 0.3));
+        shadow.setColor(Color.rgb(0, 255, 65, 0.3)); // Semi-transparent green
         setEffect(shadow);
 
-        // Title with status indicator
+        // === ROW WITH NAME AND STATUS ===
         HBox titleBox = createTitleBox();
 
-        // Path
+        // === WORKING DIRECTORY PATH ===
         Label pathLabel = new Label("📁 " + entry.getWorkingDir());
-        pathLabel.setStyle(StyleManager.getCardPathStyle());
-        pathLabel.setWrapText(true);
+        pathLabel.setStyle(StyleManager.getCardPathStyle()); // Gray italic
+        pathLabel.setWrapText(true); // Wrap long paths
 
-        // Commands
+        // === COMMAND LIST ===
         VBox commandsBox = createCommandsBox();
 
-        // Buttons
+        // === CONTROL BUTTONS ===
         HBox buttonBox = createButtonBox();
 
+        // Add all elements in vertical order
         getChildren().addAll(titleBox, pathLabel, commandsBox, buttonBox);
 
+        // Add hover highlight effect
         setupHoverEffect();
     }
 
+    /**
+     * ROW WITH NAME AND STATUS INDICATOR
+     *
+     * Example: "My Script ⚫"
+     */
     private HBox createTitleBox() {
-        HBox titleBox = new HBox(10);
+        HBox titleBox = new HBox(10); // 10px between name and status
         titleBox.setAlignment(Pos.CENTER_LEFT);
 
+        // === SCRIPT NAME ===
         Label nameLabel = new Label(entry.getName());
-        nameLabel.setStyle(StyleManager.getCardTitleStyle());
+        nameLabel.setStyle(StyleManager.getCardTitleStyle()); // Large white text
 
+        // === STATUS INDICATOR ===
+        // By default set status to "stopped" (⚫)
         StyleManager.setStoppedStatus(statusLabel);
 
         titleBox.getChildren().addAll(nameLabel, statusLabel);
         return titleBox;
     }
 
+    /**
+     * COMMAND LIST FOR EXECUTION
+     *
+     * Each command is displayed on a separate line with "▶" prefix
+     * Example:
+     * ▶ npm install
+     * ▶ npm start
+     */
     private VBox createCommandsBox() {
-        VBox commandsBox = new VBox(3);
+        VBox commandsBox = new VBox(3); // 3px between commands
+
+        // Iterate through all script commands
         for (String cmd : entry.getCommands()) {
             Label cmdLabel = new Label("▶ " + cmd);
-            cmdLabel.setStyle(StyleManager.getCardCommandStyle());
+            cmdLabel.setStyle(StyleManager.getCardCommandStyle()); // Monospace font
             commandsBox.getChildren().add(cmdLabel);
         }
+
         return commandsBox;
     }
 
+    /**
+     * CONTROL BUTTON PANEL
+     *
+     * Three buttons:
+     * [▶ RUN]    - run script (green-purple)
+     * [✎ EDIT]   - edit script (purple)
+     * [✖ DELETE] - delete script (red)
+     */
     private HBox createButtonBox() {
-        HBox buttonBox = new HBox(8);
+        HBox buttonBox = new HBox(8); // 8px between buttons
         buttonBox.setAlignment(Pos.CENTER_LEFT);
-        buttonBox.setPadding(new Insets(8, 0, 0, 0));
+        buttonBox.setPadding(new Insets(8, 0, 0, 0)); // Top padding
 
+        // === RUN BUTTON ===
         Button runBtn = StyleManager.createSmallButton("▶ RUN", StyleManager.ACCENT_GREEN);
-        runBtn.setOnAction(e -> onRun.accept(entry));
+        runBtn.setOnAction(e -> onRun.accept(entry)); // Calls handleRunScript() in MainWindow
 
+        // === EDIT BUTTON ===
         Button editBtn = StyleManager.createSmallButton("✎ EDIT", StyleManager.ACCENT_BLUE);
-        editBtn.setOnAction(e -> onEdit.accept(entry));
+        editBtn.setOnAction(e -> onEdit.accept(entry)); // Opens edit dialog
 
+        // === DELETE BUTTON ===
         Button deleteBtn = StyleManager.createSmallButton("✖ DELETE", StyleManager.ACCENT_RED);
-        deleteBtn.setOnAction(e -> onDelete.accept(entry));
+        deleteBtn.setOnAction(e -> onDelete.accept(entry)); // Opens confirmation dialog
 
         buttonBox.getChildren().addAll(runBtn, editBtn, deleteBtn);
         return buttonBox;
     }
 
+    /**
+     * MOUSE HOVER EFFECT
+     *
+     * On hover: brighter background + purple border + stronger shadow
+     * On exit: return to normal appearance
+     */
     private void setupHoverEffect() {
         setOnMouseEntered(e -> setStyle(StyleManager.getCardHoverStyle()));
         setOnMouseExited(e -> setStyle(StyleManager.getCardStyle()));
     }
 
+    // === GETTERS FOR ELEMENT ACCESS ===
+
+    /**
+     * Get status indicator (⚫/🟢)
+     * Used to update status when script starts/stops
+     */
     public Label getStatusLabel() {
         return statusLabel;
     }
 
+    /**
+     * Get script data
+     */
     public ScriptEntry getEntry() {
         return entry;
     }

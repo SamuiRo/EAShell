@@ -16,12 +16,36 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 
+/**
+ * SCRIPT LIST PANEL (LEFT SIDE OF WINDOW)
+ *
+ * Responsible for displaying all saved scripts as a vertical list of cards.
+ * Each script is represented by a separate ScriptCard.
+ *
+ * Structure:
+ * ┌──────────────────────────────┐
+ * │ 📋 SCRIPTS      (header)     │
+ * ├──────────────────────────────┤
+ * │ ┌──────────────────────────┐ │
+ * │ │ [ScriptCard 1]           │ │ <- Script card
+ * │ │ [ScriptCard 2]           │ │
+ * │ │ [ScriptCard 3]           │ │ <- Scrollable list
+ * │ │ ...                      │ │
+ * │ └──────────────────────────┘ │
+ * └──────────────────────────────┘
+ */
 public class ScriptListPanel extends VBox {
+    // Container that holds all script cards
     private final VBox scriptListContainer;
+
+    // Map for quick access to cards by script name
+    // Used to update status (⚫/🟢) when script starts
     private final Map<String, ScriptCard> scriptCards;
-    private final Consumer<ScriptEntry> onRun;
-    private final Consumer<ScriptEntry> onEdit;
-    private final Consumer<ScriptEntry> onDelete;
+
+    // Callbacks for handling user actions
+    private final Consumer<ScriptEntry> onRun;    // Run script
+    private final Consumer<ScriptEntry> onEdit;   // Edit script
+    private final Consumer<ScriptEntry> onDelete; // Delete script
 
     public ScriptListPanel(Consumer<ScriptEntry> onRun,
                            Consumer<ScriptEntry> onEdit,
@@ -31,62 +55,121 @@ public class ScriptListPanel extends VBox {
         this.onEdit = onEdit;
         this.onDelete = onDelete;
 
+        // Spacing between panel elements
         setSpacing(10);
         setPadding(new Insets(20));
+
+        // Dark gradient panel background
         setStyle(StyleManager.getPanelStyle());
 
-        Label header = new Label(Constants.SCRIPTS_HEADER);
-        header.setStyle(StyleManager.getHeaderStyle());
+        // === HEADER "📋 SCRIPTS" ===
+        Label header = new Label(Constants.SCRIPTS_HEADER); // "📋 SCRIPTS"
+        header.setStyle(StyleManager.getHeaderStyle()); // Purple glowing text
 
+        // === SCROLLABLE AREA ===
+        // Allows scrolling the list if there are many scripts
         ScrollPane scrollPane = new ScrollPane();
-        scrollPane.setFitToWidth(true);
-        scrollPane.setStyle(StyleManager.getScrollPaneStyle());
+        scrollPane.setFitToWidth(true); // Cards stretch to full width
+        scrollPane.setStyle(StyleManager.getScrollPaneStyle()); // Transparent background
 
-        scriptListContainer = new VBox(10);
+        // === CARD CONTAINER ===
+        scriptListContainer = new VBox(10); // 10px between cards
         scriptListContainer.setPadding(new Insets(10));
         scrollPane.setContent(scriptListContainer);
 
+        // ScrollPane stretches to full available height
         VBox.setVgrow(scrollPane, Priority.ALWAYS);
+
+        // Add all elements: header, separator, scrollable area
         getChildren().addAll(header, new Separator(), scrollPane);
     }
 
+    /**
+     * UPDATE SCRIPT LIST
+     *
+     * Called when:
+     * - New script is added (+ NEW SCRIPT)
+     * - Existing script is edited (✎ EDIT)
+     * - Script is deleted (✖ DELETE)
+     * - On application startup (loading from JSON file)
+     *
+     * Clears old cards and creates new ones for each script.
+     */
     public void refresh(List<ScriptEntry> entries) {
+        // Remove all old cards
         scriptListContainer.getChildren().clear();
         scriptCards.clear();
 
+        // If no scripts - show hint
         if (entries.isEmpty()) {
             showEmptyMessage();
             return;
         }
 
+        // Create card for each script
         for (ScriptEntry entry : entries) {
             ScriptCard card = new ScriptCard(entry, onRun, onEdit, onDelete);
+
+            // Save card in map for quick access
             scriptCards.put(entry.getName(), card);
+
+            // Add card to container
             scriptListContainer.getChildren().add(card);
         }
     }
 
+    /**
+     * MESSAGE WHEN NO SCRIPTS
+     *
+     * Displayed when user hasn't added any scripts yet.
+     * Hints to click "NEW SCRIPT" to get started.
+     */
     private void showEmptyMessage() {
         Label emptyLabel = new Label("No scripts added yet.\nClick 'NEW SCRIPT' to get started.");
-        emptyLabel.setStyle(StyleManager.getEmptyLabelStyle());
+        emptyLabel.setStyle(StyleManager.getEmptyLabelStyle()); // Gray centered text
         emptyLabel.setAlignment(Pos.CENTER);
         scriptListContainer.getChildren().add(emptyLabel);
     }
 
+    /**
+     * UPDATE SCRIPT STATUS
+     *
+     * Changes status indicator (⚫/🟢) on card when:
+     * - Script starts (running = true) -> 🟢 green with glow
+     * - Script stops (running = false) -> ⚫ gray
+     *
+     * @param scriptName - script name
+     * @param running - whether script is running
+     */
     public void updateScriptStatus(String scriptName, boolean running) {
+        // Find card by script name
         ScriptCard card = scriptCards.get(scriptName);
+
         if (card != null) {
             if (running) {
+                // Set status to "running" (🟢)
                 StyleManager.setRunningStatus(card.getStatusLabel());
             } else {
+                // Set status to "stopped" (⚫)
                 StyleManager.setStoppedStatus(card.getStatusLabel());
             }
         }
     }
 
+    /**
+     * GET ALL STATUS INDICATORS
+     *
+     * Returns map: script_name -> status_indicator
+     * Used in handleStopAll() for bulk status updates.
+     *
+     * @return map with status indicators of all scripts
+     */
     public Map<String, Label> getStatusLabels() {
         Map<String, Label> labels = new HashMap<>();
+
+        // Extract status indicator from each card
         scriptCards.forEach((name, card) -> labels.put(name, card.getStatusLabel()));
+
         return labels;
     }
 }
