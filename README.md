@@ -71,7 +71,7 @@ EAShell is a lightweight desktop application designed to simplify working with c
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/eashell.git
+git clone https://github.com/SamuiRo/EAShell.git
 cd eashell
 
 # Build with Maven
