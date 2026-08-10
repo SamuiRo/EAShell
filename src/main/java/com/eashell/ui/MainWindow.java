@@ -72,8 +72,9 @@ public class MainWindow {
         this.repository = new ScriptRepository();
         this.runningProcesses = new ConcurrentHashMap<>();
 
-        // Create thread pool for running scripts
-        this.executorService = Executors.newCachedThreadPool(r -> {
+        // Bounded so running a whole group of scripts can't spawn unlimited threads,
+        // OS processes and console tabs at once - excess runs just queue.
+        this.executorService = Executors.newFixedThreadPool(Constants.MAX_CONCURRENT_SCRIPTS, r -> {
             Thread t = new Thread(r);
             t.setDaemon(true); // Daemon threads terminate when the application closes
             return t;

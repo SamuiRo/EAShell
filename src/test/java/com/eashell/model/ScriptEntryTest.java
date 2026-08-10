@@ -53,7 +53,8 @@ class ScriptEntryTest {
     @Test
     void missingFieldsDeserializeToNull() {
         // ScriptRepository relies on this to detect and backfill entries saved before ids
-        // existed, and ROADMAP.md §1 relies on the same behavior for its `group` field.
+        // existed, and the group field (ROADMAP.md §1) relies on the same behavior for
+        // scripts saved before groups existed.
         Gson gson = new Gson();
         ScriptEntry restored = gson.fromJson("{\"name\":\"build\"}", ScriptEntry.class);
 
@@ -61,5 +62,24 @@ class ScriptEntryTest {
         assertNull(restored.getId());
         assertNull(restored.getWorkingDir());
         assertNull(restored.getCommands());
+    }
+
+    @Test
+    void groupDefaultsToNullAndIsMutable() {
+        ScriptEntry entry = new ScriptEntry("build", "C:\\a", List.of("npm install"));
+        assertNull(entry.getGroup());
+
+        entry.setGroup("backend");
+        assertEquals("backend", entry.getGroup());
+    }
+
+    @Test
+    void nullGroupRoundTripsThroughGsonAsNull() {
+        Gson gson = new Gson();
+        ScriptEntry entry = new ScriptEntry("build", "C:\\a", List.of("npm install"));
+
+        ScriptEntry restored = gson.fromJson(gson.toJson(entry), ScriptEntry.class);
+
+        assertNull(restored.getGroup());
     }
 }

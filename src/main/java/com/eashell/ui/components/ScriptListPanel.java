@@ -3,18 +3,24 @@ package com.eashell.ui.components;
 import com.eashell.model.ScriptEntry;
 import com.eashell.util.Constants;
 import com.eashell.util.StyleManager;
+import javafx.event.Event;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Separator;
+import javafx.scene.control.TitledPane;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 /**
  * SCRIPT LIST PANEL (LEFT SIDE OF WINDOW)
@@ -100,7 +106,9 @@ public class ScriptListPanel extends VBox {
      * - Script is deleted (✖ DELETE)
      * - On application startup (loading from JSON file)
      *
-     * Clears old cards and creates new ones for each script.
+     * Clears old cards and creates new ones for each script, grouped into a collapsible
+     * section per distinct ScriptEntry.getGroup() (null -> "Ungrouped"). Grouping is a
+     * view-only concern - it doesn't touch the repository or how scripts run.
      */
     public void refresh(List<ScriptEntry> entries) {
         // Remove all old cards
@@ -113,17 +121,51 @@ public class ScriptListPanel extends VBox {
             return;
         }
 
-        // Create card for each script
-        for (ScriptEntry entry : entries) {
+        Map<String, List<ScriptEntry>> byGroup = entries.stream()
+                .collect(Collectors.groupingBy(
+                        e -> e.getGroup() == null ? Constants.UNGROUPED_LABEL : e.getGroup(),
+                        TreeMap::new, Collectors.toList()));
+
+        byGroup.forEach((groupName, groupEntries) ->
+                scriptListContainer.getChildren().add(createGroupPane(groupName, groupEntries)));
+    }
+
+    private TitledPane createGroupPane(String groupName, List<ScriptEntry> groupEntries) {
+        VBox cardsBox = new VBox(10);
+        cardsBox.setPadding(new Insets(5, 0, 0, 0));
+
+        for (ScriptEntry entry : groupEntries) {
             ScriptCard card = new ScriptCard(entry, onRun, onEdit, onDelete);
 
             // Save card in map for quick access, keyed by the stable id (not the display
             // name, which is neither unique nor stable across edits)
             scriptCards.put(entry.getId(), card);
 
-            // Add card to container
-            scriptListContainer.getChildren().add(card);
+            cardsBox.getChildren().add(card);
         }
+
+        TitledPane pane = new TitledPane("", cardsBox);
+        pane.setGraphic(createGroupHeader(groupName, groupEntries));
+        pane.setExpanded(true);
+        return pane;
+    }
+
+    /**
+     * Group header: name + a button that runs every script in the group. No new execution
+     * logic - it just calls the same onRun callback used by each card's own RUN button.
+     */
+    private HBox createGroupHeader(String groupName, List<ScriptEntry> groupEntries) {
+        Label nameLabel = new Label(groupName);
+        nameLabel.setStyle(StyleManager.getGroupHeaderStyle());
+
+        Button runGroupBtn = StyleManager.createSmallButton(Constants.GROUP_RUN_BUTTON, StyleManager.ACCENT_GREEN);
+        runGroupBtn.setOnAction(e -> groupEntries.forEach(onRun));
+        // Without this, clicking the button also toggles the TitledPane's expand/collapse.
+        runGroupBtn.setOnMouseClicked(Event::consume);
+
+        HBox headerBox = new HBox(10, nameLabel, runGroupBtn);
+        headerBox.setAlignment(Pos.CENTER_LEFT);
+        return headerBox;
     }
 
     /**
@@ -176,7 +218,7 @@ public class ScriptListPanel extends VBox {
         Map<String, Label> labels = new HashMap<>();
 
         // Extract status indicator from each card
-        scriptCards.forEach((name, card) -> labels.put(name, card.getStatusLabel()));
+        scriptCards.forEach((id, card) -> labels.put(id, card.getStatusLabel()));
 
         return labels;
     }

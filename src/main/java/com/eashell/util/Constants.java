@@ -24,6 +24,8 @@ public class Constants {
     public static final int PROCESS_STOP_TIMEOUT_SECONDS = 2;
     public static final int EXECUTOR_SHUTDOWN_TIMEOUT_SECONDS = 5;
     public static final Charset CONSOLE_CHARSET = StandardCharsets.UTF_8;
+    // Bounded so running a large group can't spawn unlimited threads/processes/tabs at once.
+    public static final int MAX_CONCURRENT_SCRIPTS = 8;
 
     // UI dimensions
     public static final int WINDOW_WIDTH = 1400;
@@ -37,6 +39,9 @@ public class Constants {
     public static final String SCRIPTS_HEADER = "📋 SCRIPTS";
     public static final String OUTPUT_HEADER = "📟 CONSOLE";
     public static final String STDIN_PROMPT = "Type input and press Enter to send it to the running process...";
+    public static final String UNGROUPED_LABEL = "Ungrouped";
+    public static final String GROUP_RUN_BUTTON = "▶ RUN GROUP";
+    public static final String GROUP_FIELD_PROMPT = "Ungrouped";
 
     // Emojis
     public static final String STATUS_RUNNING = "🟢";

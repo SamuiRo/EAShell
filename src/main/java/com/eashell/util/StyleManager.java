@@ -1,6 +1,7 @@
 package com.eashell.util;
 
 import javafx.scene.control.Button;
+import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
@@ -304,6 +305,23 @@ public class StyleManager {
         });
     }
 
+    public static void styleComboBox(ComboBox<String> box) {
+        box.setStyle("-fx-background-color: " + PRIMARY_BG + ";" +
+                "-fx-text-fill: " + "#7DD3E8" + ";" +
+                "-fx-border-color: " + BORDER_COLOR + ";" +
+                "-fx-border-radius: 2;" +
+                "-fx-background-radius: 2;" +
+                "-fx-font-family: " + FONT_ELEGANT + ";");
+    }
+
+    // Script groups
+    public static String getGroupHeaderStyle() {
+        return "-fx-text-fill: " + TEXT_ACCENT + ";" +
+                "-fx-font-size: 15px;" +
+                "-fx-font-weight: 700;" +
+                "-fx-font-family: " + FONT_ELEGANT + ";";
+    }
+
     public static String getOutputAreaStyle() {
         return "-fx-control-inner-background: #0d0a12;" +
                 "-fx-background-color: #0d0a12;" +
@@ -410,6 +428,39 @@ public class StyleManager {
                 "-fx-border-color: transparent; }" +
 
                 ".split-pane > .split-pane-divider:hover { " +
-                "-fx-background-color: #7A5B9A; }";
+                "-fx-background-color: #7A5B9A; }" +
+
+                // Script group headers
+                ".titled-pane > .title { " +
+                "-fx-background-color: #2D1B3D; " +
+                "-fx-background-radius: 4; " +
+                "-fx-border-color: #4A3B5A; " +
+                "-fx-border-radius: 4; }" +
+
+                ".titled-pane > .title > .arrow-button > .arrow { " +
+                "-fx-background-color: " + TEXT_SECONDARY + "; }" +
+
+                ".titled-pane > *.content { " +
+                "-fx-background-color: transparent; " +
+                "-fx-border-color: transparent; }" +
+
+                // ComboBox dropdown (defaults to a white popup otherwise)
+                ".combo-box .arrow-button { " +
+                "-fx-background-color: transparent; }" +
+
+                ".combo-box .arrow { " +
+                "-fx-background-color: " + TEXT_SECONDARY + "; }" +
+
+                ".combo-box-popup .list-view { " +
+                "-fx-background-color: " + PRIMARY_BG + "; " +
+                "-fx-border-color: " + BORDER_COLOR + "; }" +
+
+                ".combo-box-popup .list-cell { " +
+                "-fx-background-color: " + PRIMARY_BG + "; " +
+                "-fx-text-fill: #7DD3E8; }" +
+
+                ".combo-box-popup .list-cell:hover { " +
+                "-fx-background-color: " + CARD_HOVER_BG + "; " +
+                "-fx-text-fill: #7DD3E8; }";
     }
 }

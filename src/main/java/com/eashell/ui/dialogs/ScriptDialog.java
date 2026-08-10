@@ -1,6 +1,7 @@
 package com.eashell.ui.dialogs;
 
 import com.eashell.model.ScriptEntry;
+import com.eashell.util.Constants;
 import com.eashell.util.StyleManager;
 import javafx.geometry.Insets;
 import javafx.scene.Node;
@@ -14,7 +15,9 @@ import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 public class ScriptDialog {
 
@@ -36,7 +39,7 @@ public class ScriptDialog {
         dialogPane.setStyle(StyleManager.getDialogStyle());
         dialogPane.getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
 
-        GridPane grid = createFormGrid(dialog, existingEntry);
+        GridPane grid = createFormGrid(dialog, existingEntry, existingEntries);
         dialogPane.setContent(grid);
 
         wireValidation(dialogPane, grid, existingEntry, existingEntries);
@@ -83,7 +86,8 @@ public class ScriptDialog {
         validate.run();
     }
 
-    private static GridPane createFormGrid(Dialog<ScriptEntry> dialog, ScriptEntry existingEntry) {
+    private static GridPane createFormGrid(Dialog<ScriptEntry> dialog, ScriptEntry existingEntry,
+                                            List<ScriptEntry> existingEntries) {
         GridPane grid = new GridPane();
         grid.setHgap(10);
         grid.setVgap(10);
@@ -116,6 +120,22 @@ public class ScriptDialog {
             }
         });
 
+        // Group field - editable combo: pick an existing group or type a new one
+        ComboBox<String> groupField = new ComboBox<>();
+        groupField.setEditable(true);
+        groupField.setPromptText(Constants.GROUP_FIELD_PROMPT);
+        List<String> distinctGroups = existingEntries.stream()
+                .map(ScriptEntry::getGroup)
+                .filter(Objects::nonNull)
+                .distinct()
+                .sorted()
+                .collect(Collectors.toList());
+        groupField.getItems().addAll(distinctGroups);
+        if (existingEntry != null && existingEntry.getGroup() != null) {
+            groupField.setValue(existingEntry.getGroup());
+        }
+        StyleManager.styleComboBox(groupField);
+
         // Commands area
         TextArea commandsArea = new TextArea();
         commandsArea.setPromptText("Commands (one per line)\nExample:\nnpm install\nnode index.js");
@@ -131,11 +151,13 @@ public class ScriptDialog {
         grid.add(StyleManager.createLabel("Path:"), 0, 1);
         grid.add(pathField, 1, 1);
         grid.add(browseBtn, 2, 1);
-        grid.add(StyleManager.createLabel("Commands:"), 0, 2);
-        grid.add(commandsArea, 1, 2, 2, 1);
+        grid.add(StyleManager.createLabel("Group:"), 0, 2);
+        grid.add(groupField, 1, 2, 2, 1);
+        grid.add(StyleManager.createLabel("Commands:"), 0, 3);
+        grid.add(commandsArea, 1, 3, 2, 1);
 
         // Store references for extraction
-        grid.setUserData(new FormData(nameField, pathField, commandsArea));
+        grid.setUserData(new FormData(nameField, pathField, groupField, commandsArea));
 
         return grid;
     }
@@ -145,6 +167,10 @@ public class ScriptDialog {
 
         String name = data.nameField.getText().trim();
         String path = data.pathField.getText().trim();
+        // Read the editor directly rather than getValue(), which only reflects committed
+        // text and may not have updated yet at the moment OK is clicked.
+        String groupText = data.groupField.getEditor().getText().trim();
+        String group = groupText.isEmpty() ? null : groupText;
 
         String[] cmdLines = data.commandsArea.getText().split("\n");
         List<String> commands = new ArrayList<>();
@@ -157,20 +183,23 @@ public class ScriptDialog {
 
         // Editing must keep the original id - runningProcesses/scriptCards are keyed by it,
         // and minting a new one here would orphan a runner the same way renaming used to.
-        if (existingEntry != null) {
-            return new ScriptEntry(existingEntry.getId(), name, path, commands);
-        }
-        return new ScriptEntry(name, path, commands);
+        ScriptEntry entry = existingEntry != null
+                ? new ScriptEntry(existingEntry.getId(), name, path, commands)
+                : new ScriptEntry(name, path, commands);
+        entry.setGroup(group);
+        return entry;
     }
 
     private static class FormData {
         final TextField nameField;
         final TextField pathField;
+        final ComboBox<String> groupField;
         final TextArea commandsArea;
 
-        FormData(TextField nameField, TextField pathField, TextArea commandsArea) {
+        FormData(TextField nameField, TextField pathField, ComboBox<String> groupField, TextArea commandsArea) {
             this.nameField = nameField;
             this.pathField = pathField;
+            this.groupField = groupField;
             this.commandsArea = commandsArea;
         }
     }

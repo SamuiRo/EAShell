@@ -7,6 +7,7 @@ import java.util.UUID;
 public class ScriptEntry {
     private String id;
     private String name;
+    private String group; // null -> rendered as "Ungrouped"; a pure view concern, not identity
     private String workingDir;
     private List<String> commands;
 
@@ -35,6 +36,14 @@ public class ScriptEntry {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public String getGroup() {
+        return group;
+    }
+
+    public void setGroup(String group) {
+        this.group = group;
     }
 
     public String getWorkingDir() {
@@ -71,6 +80,7 @@ public class ScriptEntry {
         return "ScriptEntry{" +
                 "id='" + id + '\'' +
                 ", name='" + name + '\'' +
+                ", group='" + group + '\'' +
                 ", workingDir='" + workingDir + '\'' +
                 ", commands=" + commands +
                 '}';
