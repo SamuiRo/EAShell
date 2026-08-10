@@ -40,7 +40,7 @@ EAShell is a lightweight desktop application designed to simplify working with c
 
 ```
 ┌──────────────────────────────────────────────────────────┐
-│ ⚡ Shell  Running: 2      [+ NEW] [⏹ STOP ALL]          │
+│ ⚡ Shell  Running: 2      [+ NEW SCRIPT] [⏹ STOP ALL]   │
 ├────────────────────┬─────────────────────────────────────┤
 │ Script List        │ 📟 CONSOLE                          │
 │ ┌────────────────┐ │ ┌─────────────────────────────────┐ │
@@ -80,7 +80,7 @@ from (not from inside `target/`, since `mvn clean` wipes that directory). See
 ```bash
 # Clone the repository
 git clone https://github.com/SamuiRo/EAShell.git
-cd eashell
+cd EAShell
 
 # Build with Maven
 mvn clean package
@@ -101,14 +101,15 @@ mvn clean javafx:run
 
 ### Creating a Script
 
-1. Click the **[+ NEW]** button in the top bar
+1. Click the **[+ NEW SCRIPT]** button in the top bar
 2. Fill in the script details:
     - **Name**: A descriptive name for your script
     - **Working Directory**: The folder where commands should run
     - **Group** *(optional)*: Pick an existing group or type a new one - scripts render under a
       collapsible section per group, with an "Ungrouped" section for scripts without one
     - **Commands**: One or more CLI commands to execute (one per line)
-3. Click **OK** (disabled until the name is filled in and the working directory exists)
+3. Click **OK** (disabled until the name is filled in, the working directory exists, and there's
+   at least one command)
 
 ### Running a Script
 
@@ -119,7 +120,7 @@ mvn clean javafx:run
 ### Managing Scripts
 
 - **Edit**: Click the **[✎ EDIT]** button to modify a script
-- **Delete**: Click the **[✗ DELETE]** button to remove a script
+- **Delete**: Click the **[✖ DELETE]** button to remove a script
 - **Stop**: Use **[⏹ STOP]** in the console tab or **[⏹ STOP ALL]** to terminate running scripts (this
   also stops anything the script itself spawned, like a dev server or a `node` child process)
 - **Run a whole group**: Click the **[▶ RUN GROUP]** button in a group's header to run every script
@@ -144,7 +145,7 @@ directory - this is independent of where you launch EAShell from). To transfer y
 eashell/
 ├── src/main/java/com/eashell/
 │   ├── App.java                    # Application entry point (checks the single-instance lock)
-│   ├── Launcher.java                # Packaging-only entry point (jpackage/java -jar)
+│   ├── Launcher.java               # Packaging-only entry point (jpackage/java -jar)
 │   ├── model/
 │   │   ├── ScriptEntry.java        # Script data model (id, name, group, workingDir, commands)
 │   │   └── ScriptRepository.java   # JSON persistence: atomic save, corrupt-file recovery, migration
@@ -274,6 +275,6 @@ Created with ❤️ by the StarLith
 
 <div align="center">
 
-[Report Bug](https://github.com/yourusername/eashell/issues) · [Request Feature](https://github.com/yourusername/eashell/issues) · [Documentation](https://github.com/yourusername/eashell/wiki)
+[Report Bug](https://github.com/SamuiRo/EAShell/issues) · [Request Feature](https://github.com/SamuiRo/EAShell/issues) · [Documentation](https://github.com/SamuiRo/EAShell/wiki)
 
 </div>
