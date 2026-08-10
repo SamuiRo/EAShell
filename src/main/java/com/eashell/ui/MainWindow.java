@@ -206,7 +206,7 @@ public class MainWindow {
 
         // === STEP 1: CREATE RUNNER ===
         // Initially create ProcessRunner without outputArea and tab
-        ProcessRunner runner = new ProcessRunner(entry, null, null);
+        ProcessRunner runner = new ProcessRunner(entry, null, null, this::updateScriptStatus);
 
         // === STEP 2: CREATE TAB IN RIGHT PANEL ===
         // Pass runner to outputPanel for tab creation
@@ -284,6 +284,11 @@ public class MainWindow {
      */
     private void refreshScriptList() {
         scriptListPanel.refresh(repository.getAll());
+
+        // refresh() rebuilds every card from scratch, so freshly built cards start
+        // stopped even for scripts that are still running - reapply the authoritative
+        // state from runningProcesses.
+        runningProcesses.keySet().forEach(name -> scriptListPanel.updateScriptStatus(name, true));
     }
 
     /**

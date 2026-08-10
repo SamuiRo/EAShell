@@ -11,9 +11,11 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BiConsumer;
 
 public class ProcessRunner implements Runnable {
     private final ScriptEntry entry;
+    private final BiConsumer<String, Boolean> onStatusChange;
     private TextArea outputArea;
     private Tab tab;
     private Process process;
@@ -24,10 +26,12 @@ public class ProcessRunner implements Runnable {
     private int currentLineStartInBuffer = 0;
     private boolean discardPendingAreaLine = false;
 
-    public ProcessRunner(ScriptEntry entry, TextArea outputArea, Tab tab) {
+    public ProcessRunner(ScriptEntry entry, TextArea outputArea, Tab tab,
+                          BiConsumer<String, Boolean> onStatusChange) {
         this.entry = entry;
         this.outputArea = outputArea;
         this.tab = tab;
+        this.onStatusChange = onStatusChange;
     }
 
     @Override
@@ -74,6 +78,7 @@ public class ProcessRunner implements Runnable {
             Platform.runLater(() -> tab.setText(entry.getName() + " " + Constants.STATUS_ERROR));
         } finally {
             running = false;
+            onStatusChange.accept(entry.getName(), false);
         }
     }
 

@@ -78,7 +78,7 @@ cd eashell
 mvn clean package
 
 # Run the application
-java -jar target/EAShell-1.2.2.jar
+java -jar target/EAShell-1.2.3.jar
 ```
 
 #### Option 3: Run with Maven
