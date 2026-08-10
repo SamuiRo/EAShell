@@ -174,13 +174,18 @@ public class ProcessRunner implements Runnable {
     public void stop() {
         running = false;
         if (process != null && process.isAlive()) {
+            // destroy() only kills the shell (powershell/sh); its children (node, yt-dlp,
+            // dev servers, ...) would otherwise keep running and holding ports/files.
+            process.descendants().forEach(ProcessHandle::destroy);
             process.destroy();
 
             try {
                 if (!process.waitFor(Constants.PROCESS_STOP_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
+                    process.descendants().forEach(ProcessHandle::destroyForcibly);
                     process.destroyForcibly();
                 }
             } catch (InterruptedException e) {
+                process.descendants().forEach(ProcessHandle::destroyForcibly);
                 process.destroyForcibly();
                 Thread.currentThread().interrupt();
             }
