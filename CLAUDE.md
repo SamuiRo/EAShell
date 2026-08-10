@@ -18,7 +18,7 @@ system Java.
 | Document | Contents |
 | --- | --- |
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | How it works today: packages, threading model, persistence, styling, extension points |
-| [`docs/IMPROVEMENTS.md`](docs/IMPROVEMENTS.md) | Defects and technical debt, P0–P3, with exact call sites — most P0/P1 items are now fixed; see its status table |
+| [`docs/IMPROVEMENTS.md`](docs/IMPROVEMENTS.md) | Defects and technical debt, P0–P3, with exact call sites. Items 1–22 are the original review; items 23–32 came out of the v2.0.0 verification pass (regressions in that release). Both sets are now mostly fixed — see its status table for exactly what's still open |
 | [`docs/ROADMAP.md`](docs/ROADMAP.md) | Feature designs (groups, stdin, packaging, output quality) — most are now implemented; §8 tracks what's done vs. still open, plus what's deliberately out of scope |
 | [`docs/PACKAGING.md`](docs/PACKAGING.md) | jpackage runbook — shipping without requiring Java on the target machine; app-image done, MSI not yet (needs WiX) |
 
@@ -114,6 +114,12 @@ Two rules that govern every change here:
 
 ## Gotchas that will bite
 
+The four P0s found in the v2.0.0 verification pass (`\r` handling, `stop()` blocking the FX thread,
+group re-run stacking dialogs, queued scripts shown as running) were all fixed in v2.0.1 — see
+`docs/IMPROVEMENTS.md` items 23-26 for exactly what changed if you're touching that code again.
+
+Still-open traps:
+
 - **`getOutputAreaFromTab` indexes tab children positionally** (`get(0)`). Changing the tab's VBox
   child order (it's `[outputArea, stdin field, controlBox]` today) breaks output routing silently —
   `docs/IMPROVEMENTS.md` item 12.
@@ -130,6 +136,19 @@ Two rules that govern every change here:
 - **Editing a script must carry its id forward** — see rule 2 above. `ScriptDialog.extractScriptEntry`
   is the one place this is currently handled correctly; don't add another `new ScriptEntry(...)` call
   for an edit path without doing the same.
+- **`ProcessRunner.run()` fires `onStatusChange(id, true)` as its own first action** now (not
+  `MainWindow` at submit time) - `MainWindow.handleRunScript` only marks the card *queued* before
+  `executorService.submit(...)`. If you add another path that starts a runner, remember the card
+  won't show "running" until `run()` itself says so.
+- **"Running: N" still counts queued scripts**, not just actively-executing ones - it reads
+  `runningProcesses.size()`, and a queued runner is already in that map. Known, not fixed — item 26.
+- **Maven may not be on PATH here** — it exists only as a wrapper distribution under
+  `~/.m2/wrapper/dists/`. `scripts/package.ps1` checks for it now and fails clearly if missing
+  (item 30), but there's still no `mvnw`. The JDK at `C:\Program Files\Java\jdk-17` is a full JDK
+  with `jpackage`/`jlink`.
+- **Diagnosing a packaged build:** the jpackage launcher runs the JVM as a *child* process, so the
+  process you started looks dead (5 threads, 8 MB, no window handle) while the real app runs beside
+  it. `docs/PACKAGING.md` §3 has the correct check.
 
 ## Files not to touch
 

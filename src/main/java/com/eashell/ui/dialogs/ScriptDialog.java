@@ -62,9 +62,10 @@ public class ScriptDialog {
     }
 
     /**
-     * Disables OK until the name and path are non-empty, the path is a real directory, and
-     * the name isn't already used by another script (renaming a script to its own current
-     * name is fine).
+     * Disables OK until the name and path are non-empty, the path is a real directory, the
+     * name isn't already used by another script (renaming a script to its own current name is
+     * fine), and there's at least one non-blank command line - an empty command list saves
+     * fine otherwise and, when run, immediately reports success having done nothing.
      */
     private static void wireValidation(DialogPane dialogPane, GridPane grid, ScriptEntry existingEntry,
                                         List<ScriptEntry> existingEntries) {
@@ -85,11 +86,14 @@ public class ScriptDialog {
             boolean nameTaken = existingEntries.stream().anyMatch(e ->
                     e.getName().equals(name) && (existingEntry == null || !e.getId().equals(existingEntry.getId())));
 
-            okButton.setDisable(name.isEmpty() || !pathIsDirectory || nameTaken);
+            boolean hasCommand = data.commandsArea.getText().lines().anyMatch(line -> !line.isBlank());
+
+            okButton.setDisable(name.isEmpty() || !pathIsDirectory || nameTaken || !hasCommand);
         };
 
         data.nameField.textProperty().addListener((obs, oldVal, newVal) -> validate.run());
         data.pathField.textProperty().addListener((obs, oldVal, newVal) -> validate.run());
+        data.commandsArea.textProperty().addListener((obs, oldVal, newVal) -> validate.run());
         validate.run();
     }
 

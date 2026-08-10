@@ -7,6 +7,11 @@
 
 $ErrorActionPreference = "Stop"
 
+if (-not (Get-Command mvn -ErrorAction SilentlyContinue)) {
+    Write-Error "mvn not found on PATH. Install Maven, or run its wrapper distribution's mvn.cmd directly."
+    exit 1
+}
+
 mvn clean package
 if ($LASTEXITCODE -ne 0) { exit 1 }
 

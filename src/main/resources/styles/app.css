@@ -148,6 +148,10 @@
     -fx-text-fill: -text-header-accent;
 }
 
+.status-queued {
+    -fx-text-fill: -text-accent;
+}
+
 .status-stopped {
     -fx-text-fill: -text-muted;
 }

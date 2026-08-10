@@ -19,6 +19,7 @@ import javafx.scene.control.TextArea;
 import javafx.scene.layout.BorderPane;
 import javafx.stage.Stage;
 
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
@@ -56,7 +57,8 @@ public class MainWindow {
     // Repository for saving/loading scripts from JSON file
     private final ScriptRepository repository;
 
-    // Map of active processes: script_name -> ProcessRunner
+    // Map of active or queued processes: script_id -> ProcessRunner (keyed by ScriptEntry.getId(),
+    // NOT the display name - see CLAUDE.md rule 2).
     // ConcurrentHashMap because there can be concurrent access from different threads
     private final Map<String, ProcessRunner> runningProcesses;
 
@@ -123,7 +125,8 @@ public class MainWindow {
         scriptListPanel = new ScriptListPanel(
                 this::handleRunScript,      // Callback when "▶ RUN" is clicked
                 this::handleEditScript,     // Callback when "✎ EDIT" is clicked
-                this::handleDeleteScript    // Callback when "✖ DELETE" is clicked
+                this::handleDeleteScript,   // Callback when "✖ DELETE" is clicked
+                this::handleRunGroup        // Callback when a group's "▶ RUN GROUP" is clicked
         );
 
         // === RIGHT PANEL - CONSOLE OUTPUT ===
@@ -207,11 +210,12 @@ public class MainWindow {
      * 1. Check if script is not already running
      * 2. Create ProcessRunner
      * 3. Create tab in OutputPanel
-     * 4. Start ProcessRunner in a separate thread
-     * 5. Update status on card (⚫ -> 🟢)
+     * 4. Submit ProcessRunner to the (bounded) executor
+     * 5. Mark the card queued (🟡) - ProcessRunner.run() itself fires the 🟢 "actually
+     *    running" update as its first action, once the pool has a free thread for it
      */
     private void handleRunScript(ScriptEntry entry) {
-        // Check if script is already running
+        // Check if script is already running (or queued)
         if (runningProcesses.containsKey(entry.getId())) {
             DeleteConfirmDialog.showAlreadyRunning(); // Show warning
             return;
@@ -240,12 +244,29 @@ public class MainWindow {
         // === STEP 5: SAVE RUNNER IN MAP ===
         runningProcesses.put(entry.getId(), runner);
 
-        // === STEP 6: UPDATE STATUS ON CARD ===
-        updateScriptStatus(entry.getId(), true); // ⚫ -> 🟢
+        // === STEP 6: MARK QUEUED ON CARD (⚫ -> 🟡) ===
+        // Not "running" yet - the bounded pool (MAX_CONCURRENT_SCRIPTS) may not have a free
+        // thread for it right away, and claiming 🟢 before a single command has actually
+        // started would be misleading (and would inflate "Running: N" for work not yet begun).
+        scriptListPanel.updateScriptQueuedStatus(entry.getId());
 
-        // === STEP 7: START IN SEPARATE THREAD ===
-        // ProcessRunner implements Runnable, so can be passed to executorService
+        // === STEP 7: SUBMIT TO EXECUTOR ===
+        // ProcessRunner implements Runnable; excess submissions beyond the pool size queue here.
         executorService.submit(runner);
+    }
+
+    /**
+     * RUN A WHOLE GROUP
+     *
+     * Called when a group's "▶ RUN GROUP" button is clicked. Silently skips scripts that are
+     * already running (or queued) instead of firing handleRunScript's blocking "already
+     * running" dialog once per hit - that warning is the right behavior for an explicit
+     * single-card click, not for a bulk action over a whole group.
+     */
+    private void handleRunGroup(List<ScriptEntry> entries) {
+        entries.stream()
+                .filter(entry -> !runningProcesses.containsKey(entry.getId()))
+                .forEach(this::handleRunScript);
     }
 
     /**
@@ -299,9 +320,16 @@ public class MainWindow {
         scriptListPanel.refresh(repository.getAll());
 
         // refresh() rebuilds every card from scratch, so freshly built cards start
-        // stopped even for scripts that are still running - reapply the authoritative
-        // state from runningProcesses.
-        runningProcesses.keySet().forEach(id -> scriptListPanel.updateScriptStatus(id, true));
+        // stopped even for scripts that are still running (or queued) - reapply the
+        // authoritative state from runningProcesses. isRunning() is false for a runner that's
+        // been submitted but not yet dequeued by the bounded pool (process is still null).
+        runningProcesses.forEach((id, runner) -> {
+            if (runner.isRunning()) {
+                scriptListPanel.updateScriptStatus(id, true);
+            } else {
+                scriptListPanel.updateScriptQueuedStatus(id);
+            }
+        });
     }
 
     /**

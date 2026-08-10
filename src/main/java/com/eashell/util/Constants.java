@@ -46,6 +46,7 @@ public class Constants {
 
     // Emojis
     public static final String STATUS_RUNNING = "🟢";
+    public static final String STATUS_QUEUED = "🟡";
     public static final String STATUS_STOPPED = "⚫";
     public static final String STATUS_SUCCESS = "✓";
     public static final String STATUS_ERROR = "✗";

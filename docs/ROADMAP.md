@@ -8,8 +8,15 @@ the packaging runbook is [`PACKAGING.md`](PACKAGING.md).
 An item that doubles the complexity of the codebase to serve a narrow scenario does not belong in
 this document — see [§7 Explicitly out of scope](#7-explicitly-out-of-scope).
 
-**Status as of v2.0.0:** §1–§4 done. §5: 5.1/5.2 done, 5.3/5.5 not done, 5.4 still deliberately
+**Status as of v2.0.1:** §1–§4 done. §5: 5.1/5.2 done, 5.3/5.5 not done, 5.4 still deliberately
 deferred. §6: single-instance lock done, the rest not done. See §8's table for the full picture.
+
+**The v2.0.0 verification pass** found that three shipped features had defects undercutting them
+(§5.1 didn't actually remove duplicate progress lines, §4.1 scrolled twice, §1's group-run and
+bounded pool produced stacked modal dialogs and phantom "running" indicators) — **all fixed in
+v2.0.1**. See [`IMPROVEMENTS.md`](IMPROVEMENTS.md) items 23–32 for exactly what changed; one gap
+remains open there by design choice, not oversight (item 26's "Running: N" still counts queued
+scripts).
 
 ---
 
@@ -18,6 +25,16 @@ deferred. §6: single-instance lock done, the rest not done. See §8's table for
 > ✅ **Implemented in v1.2.8**, following the design below almost exactly — one deviation: expanded/
 > collapsed state is not yet persisted (still §6 below), so `ScriptListPanel.refresh()` currently
 > re-expands every group on any list change.
+>
+> ✅ The v2.0.0 verification pass found two consequences the traps below did not anticipate, both
+> arising from group-run meeting the bounded pool: re-running a group popped one **blocking modal
+> dialog per already-running script** ([`IMPROVEMENTS.md`](IMPROVEMENTS.md) item 25, fixed in
+> v2.0.1 via a separate `onRunGroup` callback that filters already-running/queued entries), and
+> scripts **queued** behind the pool limit were displayed and counted as running (item 26, the card
+> indicator fixed in v2.0.1 with a distinct 🟡 queued state - the "Running: N" counter still counts
+> queued scripts, left as a known gap rather than fixed). Trap 1 below correctly called for bounding
+> the pool; it just didn't originally follow through to what the UI should show once runs start
+> queueing.
 
 **Verdict: yes — cheapest feature of the set.** Do it as a flat field, never as a tree.
 
@@ -133,9 +150,15 @@ it while no process is alive.
 ## 3. Ship without requiring Java on the target machine
 
 > ✅ **Implemented in v1.2.10** — Level 1 (app-image) and Level 2 (trimmed `--add-modules`) from
-> `PACKAGING.md`, via `scripts/package.ps1`. **Not done:** Level 3 (jlink), Level 4 (MSI — needs WiX
-> Toolset, not installed on the dev machine), and verification on a genuinely JDK-less machine (only
-> tested on the dev box so far, which proves less than a clean VM would).
+> `PACKAGING.md`, via `scripts/package.ps1`. **Not done:** Level 3 (jlink) and Level 4 (MSI — needs
+> WiX Toolset, not installed on the dev machine).
+>
+> ✅ **The no-Java claim is now verified** (v2.0.0 verification pass): the app-image was launched with
+> an empty `JAVA_HOME` and `PATH=C:\Windows\system32;C:\Windows`, with `java` confirmed invisible to
+> the child process. The window opened and the app ran normally (99 threads, 153 MB). Output is
+> 74 MB. A clean VM would additionally rule out unrelated system dependencies, but the bundled
+> runtime is doing its job. The 947 KB of test-scope jars that were shipping alongside it are gone
+> as of v2.0.1 ([`IMPROVEMENTS.md`](IMPROVEMENTS.md) item 29, `<includeScope>runtime</includeScope>`).
 
 **Verdict: yes, and this is the highest-value item.**
 
@@ -166,6 +189,10 @@ loses the user's scripts.
 
 > ✅ **Implemented in v1.2.2** — both 4.1 and 4.2 below, plus 4.2's own suggested verification (the
 > green shadow was confirmed dead code and removed, not just commented out).
+>
+> One gap found in the v2.0.0 verification pass, fixed in v2.0.1: the handler didn't call
+> `e.consume()`, so the `ScrollPane` scrolled a second time on its own and the effective speed was
+> `SCROLL_SPEED_FACTOR + 1` — [`IMPROVEMENTS.md`](IMPROVEMENTS.md) item 28.
 
 **Verdict: yes, and the cause is two separate problems.**
 
@@ -212,7 +239,10 @@ it is a rewrite of `ScriptListPanel` and interacts with the grouping design in �
 
 Small changes, disproportionate effect on daily use.
 
-> ✅ 5.1 and 5.2 **implemented in v1.2.2**. 5.3 and 5.5 **not done**. 5.4 remains deliberately deferred.
+> ✅ 5.1 and 5.2 **implemented in v1.2.2**. The v2.0.0 verification pass found 5.1 didn't actually
+> work — duplicated progress lines in two of three reproduced cases — fixed in v2.0.1
+> ([`IMPROVEMENTS.md`](IMPROVEMENTS.md) item 23), manually re-verified against a real progress-bar
+> loop. 5.3 and 5.5 **not done**. 5.4 remains deliberately deferred.
 
 ### 5.1 Carriage returns (`\r`)
 
@@ -294,8 +324,9 @@ the codebase in exchange for a narrow scenario.
 ## 8. Combined execution order
 
 Merging defects from [`IMPROVEMENTS.md`](IMPROVEMENTS.md) with the features above. Dependencies are
-real — the order matters. **All 10 steps are done as of v2.0.0**, except the MSI installer half of
-step 9 (needs WiX Toolset).
+real — the order matters. **All 10 steps are done**, except the MSI installer half of step 9 (needs
+WiX Toolset). Steps 1, 2, 4 and 8 shipped with regressions the v2.0.0 verification pass caught -
+[`IMPROVEMENTS.md`](IMPROVEMENTS.md) items 23-32, all fixed in v2.0.1.
 
 | # | Work | Rationale | Status |
 | --- | --- | --- | --- |

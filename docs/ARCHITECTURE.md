@@ -1,6 +1,6 @@
 # EAShell — Architecture
 
-> Version described: **2.0.0** · Java 17 · JavaFX 17.0.2 · Maven
+> Version described: **2.0.1** · Java 17 · JavaFX 17.0.2 · Maven
 >
 > Companion documents: [`IMPROVEMENTS.md`](IMPROVEMENTS.md) (defects and technical debt) ·
 > [`ROADMAP.md`](ROADMAP.md) (feature designs and what is out of scope) ·
@@ -36,7 +36,7 @@ application is ~1700 lines of Java across 15 classes.
 ## 2. Build and packaging
 
 ```
-mvn clean package                →  target/EAShell-2.0.0.jar        (manifest Class-Path: libs/*)
+mvn clean package                →  target/EAShell-2.0.1.jar        (manifest Class-Path: libs/*)
                                      target/libs/*.jar               (deps + the app jar itself, staged by antrun)
                                      target/EAShell.exe              (Launch4j GUI wrapper, needs a system JRE 17+)
 mvn clean javafx:run             →  run from sources via javafx-maven-plugin
@@ -57,7 +57,9 @@ Key `pom.xml` facts:
   point for `mvn javafx:run`.
 - `maven-antrun-plugin` copies the built app JAR into `target/libs` at the `package` phase, so
   jpackage's `--input` can point at one directory containing everything (`docs/PACKAGING.md` §2).
-- The Launch4j `versionInfo` block hardcodes `2.0.0.0` — the version lives in **three** places
+  `copy-dependencies` is scoped to `<includeScope>runtime</includeScope>` (v2.0.1, item 29) - without
+  it, the JUnit test stack was shipping inside the app-image too.
+- The Launch4j `versionInfo` block hardcodes `2.0.1.0` — the version lives in **three** places
   (`<version>`, `fileVersion`/`productVersion`, and the README run command). Unfixed —
   [`IMPROVEMENTS.md`](IMPROVEMENTS.md) item 17.
 - `dependency-reduced-pom.xml` in the repo root is a leftover from a `maven-shade-plugin` setup that
@@ -159,7 +161,8 @@ Three kinds of threads are live at any moment:
 | JavaFX Application Thread | JavaFX | All widget mutation. Every cross-thread update funnels through `Platform.runLater`. |
 | Runner threads | `Executors.newFixedThreadPool(8)` in `MainWindow` (daemon) | One per running script; executes `ProcessRunner.run()` — the sequential command loop, blocking on `process.waitFor()`. Bounded so running a whole group can't spawn unlimited threads/processes/tabs at once; excess submissions just queue. |
 | Reader threads | `new Thread(this::readProcessOutput)` in `ProcessRunner` (daemon) | One per *command*; drains the merged stdout+stderr stream. |
-| Status poller | `java.util.Timer` in `TopBar` (daemon) | Fires every 1000 ms, reads `runningProcesses.size()`, posts a label update. Still polling — [`IMPROVEMENTS.md`](IMPROVEMENTS.md) item 19 is unfixed. |
+| Stop threads | `new Thread(() -> destroyAndWait(...))` in `ProcessRunner.stop()` (daemon) | One per `stop()` call; every caller (STOP button, tab close, STOP ALL, window close) is on the FX thread, and destroying a stubborn process can block up to `PROCESS_STOP_TIMEOUT_SECONDS` - this thread exists so `stop()` itself returns immediately instead of freezing the UI. |
+| Status poller | `java.util.Timer` in `TopBar` (daemon) | Fires every 1000 ms, reads `runningProcesses.size()`, posts a label update. Still polling — [`IMPROVEMENTS.md`](IMPROVEMENTS.md) item 19 is unfixed. Also still counts scripts merely *queued* behind the bounded pool, not just actively executing ones — item 26. |
 
 Shared state:
 
@@ -196,7 +199,7 @@ sequenceDiagram
     U->>Card: click ▶ RUN
     Card->>MW: onRun.accept(entry)
     MW->>MW: runningProcesses.containsKey(entry.getId())?
-    alt already running
+    alt already running or queued
         MW-->>U: DeleteConfirmDialog.showAlreadyRunning()
     else free
         MW->>PR: new ProcessRunner(entry, null, null, this::updateScriptStatus)
@@ -205,46 +208,56 @@ sequenceDiagram
         MW->>OP: getOutputAreaFromTab(tab)
         MW->>PR: setOutputArea(...) / setTab(...)
         MW->>MW: runningProcesses.put(entry.getId(), runner)
-        MW->>MW: updateScriptStatus(entry.getId(), true)   %% ⚫ → 🟢
+        MW->>MW: scriptListPanel.updateScriptQueuedStatus(entry.getId())   %% ⚫ → 🟡
         MW->>EX: submit(runner)
+        Note over EX,PR: run() may not start immediately - the pool is bounded to 8
         EX->>PR: run()
+        PR->>MW: onStatusChange.accept(entry.getId(), true)   %% 🟡 → 🟢, first action in run()
         loop for each command
             PR->>OS: ProcessBuilder.start() (powershell.exe -Command / sh -c), NO_COLOR/TERM set
             PR->>PR: reader thread → buffer (\r-collapse) → Platform.runLater → TextArea
             OS-->>PR: exit code
         end
-        PR->>PR: tab.setText(name + "✓")
+        PR->>PR: if (running) tab.setText(name + "✓")
         PR->>MW: onStatusChange.accept(entry.getId(), false)   %% via finally block
     end
 ```
 
 Unlike the pre-2.0 version, the finally block always calls `onStatusChange`, on every exit path
-(success, error, or `stop()`) — see [`IMPROVEMENTS.md`](IMPROVEMENTS.md) item 1 for what this replaced.
+(success, error, or `stop()`) — see [`IMPROVEMENTS.md`](IMPROVEMENTS.md) item 1 for what this
+replaced. The queued→running split (item 26) and the `if (running)` guard on the success title
+(item 27) were both added in v2.0.1, fixing regressions the bounded pool and `stop()` introduced.
 
 ### Sequence — stopping
 
 ```mermaid
 sequenceDiagram
-    participant Trigger as STOP / tab close / STOP ALL
-    participant PR as ProcessRunner
+    participant Trigger as STOP / tab close / STOP ALL (FX thread)
+    participant PR as ProcessRunner.stop()
+    participant ST as stop thread (daemon)
     participant P as Process
     participant D as Descendant processes
 
     Trigger->>PR: stop()
     PR->>PR: running = false
-    PR->>D: process.descendants().forEach(destroy)
-    PR->>P: destroy()            %% SIGTERM / TerminateProcess on the shell
+    PR->>ST: new Thread(() -> destroyAndWait(process)).start()
+    PR-->>Trigger: returns immediately - FX thread never blocks
+    ST->>D: process.descendants().forEach(destroy)
+    ST->>P: destroy()            %% SIGTERM / TerminateProcess on the shell
     alt not dead within PROCESS_STOP_TIMEOUT_SECONDS (2s)
-        PR->>D: process.descendants().forEach(destroyForcibly)
-        PR->>P: destroyForcibly()
+        ST->>D: process.descendants().forEach(destroyForcibly)
+        ST->>P: destroyForcibly()
     end
-    PR->>PR: append ">>> Process terminated by user." + flush
-    PR->>PR: tab.setText(name + "⏹")
+    ST->>ST: append ">>> Process terminated by user." + flush
+    ST->>ST: Platform.runLater(() -> tab.setText(name + "⏹"))
 ```
 
-`stop()` now walks `process.descendants()` before killing the parent, both on the graceful path and
-the forcible-kill fallback, so children (`node`, `yt-dlp.exe`, dev servers, …) no longer survive
-STOP. See [`IMPROVEMENTS.md`](IMPROVEMENTS.md) item 2 for the defect this replaced.
+`stop()` walks `process.descendants()` before killing the parent, both on the graceful path and the
+forcible-kill fallback, so children (`node`, `yt-dlp.exe`, dev servers, …) no longer survive STOP —
+see [`IMPROVEMENTS.md`](IMPROVEMENTS.md) item 2. The destroy-and-wait sequence itself moved onto a
+dedicated daemon thread in v2.0.1 (item 24): every caller of `stop()` is on the FX thread, and
+waiting up to `PROCESS_STOP_TIMEOUT_SECONDS` per script - times up to 8 concurrent scripts on STOP
+ALL - was freezing the window for several seconds.
 
 ---
 
@@ -362,11 +375,10 @@ Implications to keep in mind:
 ## 9. Known behavioural gaps
 
 These are architectural facts, not style opinions — they change how the app behaves. Fixes and
-priorities are in [`IMPROVEMENTS.md`](IMPROVEMENTS.md); this list now only covers what's still open
-(most of the gaps described in earlier versions of this document — missing completion callback, kill
-not reaching descendants, running indicators resetting, renaming orphaning a runner, CWD-relative data
-file, uncaught corrupt-JSON — are fixed; see `IMPROVEMENTS.md`'s status table for what changed and
-when).
+priorities are in [`IMPROVEMENTS.md`](IMPROVEMENTS.md); this list only covers what's still open as of
+v2.0.1 (the v2.0.0 verification pass found four real regressions here - `\r` handling, `stop()`
+blocking the FX thread, the run registry's queued/running conflation, and a stopped run reporting
+success - all fixed in v2.0.1; see `IMPROVEMENTS.md` items 23, 24, 26, 27).
 
 1. **The `process` field is reassigned per command** while the previous reader thread may still hold
    a reference, joined with only a 1 s timeout. A slow-draining reader can observe the next command's
@@ -383,6 +395,9 @@ when).
    `TitledPane` expanded, so adding/editing/deleting any script re-expands every group. Deliberately
    deferred to [`ROADMAP.md`](ROADMAP.md) §6 (window-geometry persistence), not a defect in the
    groups feature itself.
+7. **"Running: N" still counts queued scripts**, not just actively-executing ones. The queued/running
+   *card* indicator was split in v2.0.1 (🟡 vs 🟢, item 26), but the counter still reads
+   `runningProcesses.size()`, and a queued runner is already in that map. Known, not fixed.
 
 ---
 
@@ -411,3 +426,14 @@ round-trip/missing-file/corrupt-file/legacy-migration behavior, using the packag
 `(dataFile, legacyDataFile)` constructor with `@TempDir`. `AppTest` is still the original placeholder.
 `ProcessRunner` remains untestable without a JavaFX toolkit, for the reason given in §4 — item 14 is
 the prerequisite.
+
+Last verified at v2.0.0: `mvn -B clean test` → BUILD SUCCESS, 14/14 tests; `mvn -B clean package` and
+a full `jpackage` app-image build both succeed, and the app-image runs with no system Java present.
+The cost of item 14 is visible here: the `\r` defect (item 23) sat in exactly the code that has no
+test, and was only caught by replaying the algorithm outside the app - a `ProcessRunner` unit test
+would have caught it before it shipped.
+
+v2.0.1 fixed items 23-32 (all manually verified against the running app: clean `\r` progress output,
+STOP ALL no longer freezing the window, group re-run not stacking dialogs, STOP not reporting
+"success", empty-commands validation) and re-ran the full test suite and a clean package build with
+no regressions.

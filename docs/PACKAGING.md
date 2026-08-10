@@ -96,8 +96,20 @@ Easiest fix — one extra execution in `pom.xml` that copies the built artifact 
 
 `target/libs/` now contains everything the app needs and nothing it doesn't.
 
-> Note: `target/libs` also picks up the JUnit test jars only if their scope changes — with
-> `<scope>test</scope>` as declared today, `copy-dependencies` excludes them. Keep it that way.
+> ✅ **Fixed in v2.0.1.** `copy-dependencies` does not honour scope by default: despite being
+> declared `<scope>test</scope>`, the JUnit stack (`junit-jupiter-api`, `junit-jupiter-params`,
+> `junit-platform-commons`, `opentest4j`, `apiguardian-api` — 947 KB) was copied into `target/libs`,
+> shipped inside the app-image, and listed on the runtime classpath in `app/EAShell.cfg` (found and
+> verified against the v2.0.0 build).
+>
+> The fix - one line added to the `copy-dependencies` configuration in `pom.xml`:
+>
+> ```xml
+> <includeScope>runtime</includeScope>
+> ```
+>
+> That keeps compile+runtime dependencies and drops test and provided ones. Re-verified: a clean
+> `mvn package` no longer copies any JUnit jar into `target/libs`.
 
 ---
 
@@ -131,7 +143,29 @@ Notes:
 ### Verify honestly
 
 Test on a machine or VM with **no JDK and no `JAVA_HOME`**. Testing on your dev box proves nothing —
-it will silently pick up the system Java through the environment.
+it will silently pick up the system Java through the environment. Short of a VM, scrubbing the child
+environment gets most of the way there:
+
+```powershell
+$env:JAVA_HOME = ""; $env:PATH = "C:\Windows\system32;C:\Windows"
+Get-Command java -ErrorAction SilentlyContinue    # must return nothing
+Start-Process "target\dist\EAShell\EAShell.exe"
+```
+
+**Don't be fooled by the process list.** The jpackage Windows launcher starts the JVM as a *child*
+process, so `Start-Process -PassThru` hands you the parent stub — ~5 threads, ~8 MB,
+`MainWindowHandle = 0` — which looks exactly like a crashed launch. Enumerate every process with the
+app's name and look at the one with a non-zero window handle:
+
+```powershell
+Get-Process EAShell | ForEach-Object { $_.Refresh(); $_ } |
+    Select-Object Id, MainWindowTitle, @{n='Threads';e={$_.Threads.Count}}
+```
+
+A healthy run shows one process with the window title and ~100 threads, alongside the stub.
+
+The runtime image has no `runtime\bin\java.exe` — jpackage strips the launcher binaries. That is
+normal and not a sign of a broken build.
 
 ---
 
@@ -261,9 +295,16 @@ places the version number is duplicated.
 - [x] `Launcher` class added; manifest and jpackage point at it
 - [x] App JAR staged into `target/libs`
 - [x] `--type app-image` builds and launches locally
-- [ ] **Verified on a machine with no JDK and no `JAVA_HOME`** — not done; only tested on the
-      dev box, which the section above explicitly warns proves nothing. Do this before
-      calling the build release-ready.
+- [x] **Verified without a system Java** — the app-image was launched with an empty `JAVA_HOME`
+      and `PATH=C:\Windows\system32;C:\Windows`, confirmed via `Get-Command java` returning
+      nothing to the child process. The window opened and the app ran normally (99 threads,
+      153 MB RSS); image size 74 MB. A clean VM would additionally rule out unrelated system
+      dependencies, but the bundled runtime is demonstrably being used.
+- [x] Test-scope jars excluded from `target/libs` — fixed in v2.0.1, `<includeScope>runtime</includeScope>`.
+      947 KB of JUnit no longer ships inside the app-image. See §2 and
+      [`IMPROVEMENTS.md`](IMPROVEMENTS.md) item 29.
+- [x] `scripts/package.ps1` fails clearly when `mvn` is missing — fixed in v2.0.1 with a
+      `Get-Command mvn` check up front (item 30). Still no `mvnw` wrapper.
 - [x] Scripts save and reload correctly from the installed location
 - [x] STOP terminates child processes ([`IMPROVEMENTS.md`](IMPROVEMENTS.md) item 2) — orphaned
       processes are far worse in an installed app than in a dev run

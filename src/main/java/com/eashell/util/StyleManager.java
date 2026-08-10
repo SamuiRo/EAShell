@@ -36,17 +36,27 @@ public class StyleManager {
         return lbl;
     }
 
-    // Status indicators (⚫/🟢)
+    // Status indicators (⚫/🟡/🟢)
+    private static final String STATUS_RUNNING_CLASS = "status-running";
+    private static final String STATUS_QUEUED_CLASS = "status-queued";
+    private static final String STATUS_STOPPED_CLASS = "status-stopped";
+
     public static void setRunningStatus(Label label) {
         label.setText(Constants.STATUS_RUNNING);
-        label.getStyleClass().removeAll("status-running", "status-stopped");
-        label.getStyleClass().add("status-running");
+        label.getStyleClass().removeAll(STATUS_RUNNING_CLASS, STATUS_QUEUED_CLASS, STATUS_STOPPED_CLASS);
+        label.getStyleClass().add(STATUS_RUNNING_CLASS);
+    }
+
+    public static void setQueuedStatus(Label label) {
+        label.setText(Constants.STATUS_QUEUED);
+        label.getStyleClass().removeAll(STATUS_RUNNING_CLASS, STATUS_QUEUED_CLASS, STATUS_STOPPED_CLASS);
+        label.getStyleClass().add(STATUS_QUEUED_CLASS);
     }
 
     public static void setStoppedStatus(Label label) {
         label.setText(Constants.STATUS_STOPPED);
-        label.getStyleClass().removeAll("status-running", "status-stopped");
-        label.getStyleClass().add("status-stopped");
+        label.getStyleClass().removeAll(STATUS_RUNNING_CLASS, STATUS_QUEUED_CLASS, STATUS_STOPPED_CLASS);
+        label.getStyleClass().add(STATUS_STOPPED_CLASS);
     }
 
     private StyleManager() {} // Prevent instantiation

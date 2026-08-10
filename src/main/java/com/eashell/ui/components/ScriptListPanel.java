@@ -49,17 +49,20 @@ public class ScriptListPanel extends VBox {
     private final Map<String, ScriptCard> scriptCards;
 
     // Callbacks for handling user actions
-    private final Consumer<ScriptEntry> onRun;    // Run script
-    private final Consumer<ScriptEntry> onEdit;   // Edit script
-    private final Consumer<ScriptEntry> onDelete; // Delete script
+    private final Consumer<ScriptEntry> onRun;         // Run script
+    private final Consumer<ScriptEntry> onEdit;        // Edit script
+    private final Consumer<ScriptEntry> onDelete;      // Delete script
+    private final Consumer<List<ScriptEntry>> onRunGroup; // Run every (not-already-running) script in a group
 
     public ScriptListPanel(Consumer<ScriptEntry> onRun,
                            Consumer<ScriptEntry> onEdit,
-                           Consumer<ScriptEntry> onDelete) {
+                           Consumer<ScriptEntry> onDelete,
+                           Consumer<List<ScriptEntry>> onRunGroup) {
         this.scriptCards = new HashMap<>();
         this.onRun = onRun;
         this.onEdit = onEdit;
         this.onDelete = onDelete;
+        this.onRunGroup = onRunGroup;
 
         // Spacing between panel elements
         setSpacing(10);
@@ -88,6 +91,9 @@ public class ScriptListPanel extends VBox {
         scriptListContainer.setOnScroll(e -> {
             double delta = e.getDeltaY() * Constants.SCROLL_SPEED_FACTOR;
             scrollPane.setVvalue(scrollPane.getVvalue() - delta / scriptListContainer.getHeight());
+            // Without this, the event still bubbles to the ScrollPane's own skin handler,
+            // which scrolls again - the effective speed was SCROLL_SPEED_FACTOR + 1.
+            e.consume();
         });
 
         // ScrollPane stretches to full available height
@@ -151,15 +157,18 @@ public class ScriptListPanel extends VBox {
     }
 
     /**
-     * Group header: name + a button that runs every script in the group. No new execution
-     * logic - it just calls the same onRun callback used by each card's own RUN button.
+     * Group header: name + a button that runs every not-already-running script in the group.
+     * Filtering already-running entries out is MainWindow's job (it owns runningProcesses) -
+     * onRunGroup is a separate callback from onRun specifically so it can do that silently,
+     * instead of the per-card RUN button's blocking "already running" warning firing once per
+     * already-running script in the group.
      */
     private HBox createGroupHeader(String groupName, List<ScriptEntry> groupEntries) {
         Label nameLabel = new Label(groupName);
         nameLabel.getStyleClass().add("group-header-label");
 
         Button runGroupBtn = StyleManager.createSmallButton(Constants.GROUP_RUN_BUTTON, StyleManager.BTN_ACCENT);
-        runGroupBtn.setOnAction(e -> groupEntries.forEach(onRun));
+        runGroupBtn.setOnAction(e -> onRunGroup.accept(groupEntries));
         // Without this, clicking the button also toggles the TitledPane's expand/collapse.
         runGroupBtn.setOnMouseClicked(Event::consume);
 
@@ -203,6 +212,20 @@ public class ScriptListPanel extends VBox {
                 // Set status to "stopped" (⚫)
                 StyleManager.setStoppedStatus(card.getStatusLabel());
             }
+        }
+    }
+
+    /**
+     * Marks a card as queued (🟡) - submitted to the executor but not yet actually running,
+     * because the bounded thread pool is full. Distinct from "running" so the card doesn't
+     * claim to be doing work it hasn't started yet.
+     *
+     * @param scriptId - stable script id
+     */
+    public void updateScriptQueuedStatus(String scriptId) {
+        ScriptCard card = scriptCards.get(scriptId);
+        if (card != null) {
+            StyleManager.setQueuedStatus(card.getStatusLabel());
         }
     }
 

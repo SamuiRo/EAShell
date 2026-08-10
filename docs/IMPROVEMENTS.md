@@ -10,6 +10,10 @@ Two items here blocked roadmap features and were scheduled accordingly — both 
 Legend: **P0** = user-visible defect · **P1** = correctness/robustness risk · **P2** = maintainability
 · **P3** = polish / new capability.
 
+Items **1–22** come from the original 1.2.1 review. Items **23–32** were found during the
+[v2.0.0 verification pass](#verification-pass-v200) — regressions and gaps in the fixes
+themselves. All ten were fixed in v2.0.1; see the status table for exact versions.
+
 ## Status (as of v2.0.0)
 
 | # | Item | Status |
@@ -36,6 +40,16 @@ Legend: **P0** = user-visible defect · **P1** = correctness/robustness risk · 
 | 20 | No real tests | Partially fixed — v1.2.6 added `ScriptEntry`/`ScriptRepository` coverage; `ProcessRunner` still blocked by item 14 |
 | 21 | Drop shadows applied twice, cost frames | ✅ Fixed — v1.2.2 |
 | 22 | No CI | Open |
+| 23 | `\r` discard flag lost when a newline follows in the same chunk | ✅ Fixed — v2.0.1 |
+| 24 | `stop()` blocks the FX thread up to 2 s per script | ✅ Fixed — v2.0.1 |
+| 25 | Re-running a group stacks N modal "already running" dialogs | ✅ Fixed — v2.0.1 |
+| 26 | Queued scripts are shown and counted as running | ✅ Fixed — v2.0.1 |
+| 27 | Tab ends as "✓ success" after STOP | ✅ Fixed — v2.0.1 |
+| 28 | Scroll handler doesn't consume the event (double scroll) | ✅ Fixed — v2.0.1 |
+| 29 | Test-scope jars ship inside the app-image | ✅ Fixed — v2.0.1 |
+| 30 | `package.ps1` assumes `mvn` is on PATH | ✅ Fixed — v2.0.1 (clear error instead of a confusing failure; still no `mvnw`) |
+| 31 | Stale comment: `runningProcesses` keyed by name | ✅ Fixed — v2.0.1 |
+| 32 | A script with zero commands passes validation | ✅ Fixed — v2.0.1 |
 
 ---
 
@@ -304,6 +318,208 @@ card. Details and the accompanying wheel-speed fix in [`ROADMAP.md`](ROADMAP.md)
 
 A GitHub Actions workflow running `mvn -B verify` on push would catch nothing today (see item 20),
 but it is the prerequisite for the tests above to matter.
+
+---
+
+## Verification pass (v2.0.0)
+
+A full re-read of the source against this document plus a real build, test run and packaging run.
+
+### What was confirmed working
+
+| Check | Result |
+| --- | --- |
+| `mvn -B clean test` | BUILD SUCCESS — 14/14 tests (`AppTest` 1, `ScriptEntryTest` 7, `ScriptRepositoryTest` 6) |
+| `mvn -B clean package` | jar + staged `target/libs` + Launch4j `EAShell.exe` |
+| `jpackage --type app-image` | `target/dist/EAShell/` — 74 MB |
+| **App-image with no system Java** | **Window "EA Shell" opened; 99 threads, 153 MB RSS** |
+| User data safety during the test | `~/.eashell/eashell_data.json` hash identical before and after |
+| CSS migration completeness | No `setStyle(`, no hex literal and no `-fx-` string left in `src/main/java` (one comment aside) |
+
+The JDK-less run used an empty `JAVA_HOME` and `PATH=C:\Windows\system32;C:\Windows`, verified with
+`Get-Command java` returning nothing to the child process. **Items 1–9, 15, 16 and 21 were verified
+in the source, not just taken from the status table** — including that editing a script preserves its
+id, which is the load-bearing part of item 8.
+
+One diagnostic subtlety worth recording, because it will mislead the next person too: the jpackage
+Windows launcher runs the JVM as a **child** process. `Start-Process -PassThru` returns the parent
+stub — 5 threads, 8 MB, `MainWindowHandle = 0` — which looks exactly like a failed launch. Enumerate
+all processes by name and check the one with a non-zero window handle.
+
+### 23. `\r` handling loses the discard flag when a newline follows · P0
+
+> ✅ **Fixed in v2.0.1.** Removed the `discardPendingAreaLine = false;` line from the `\n`
+> branch, per the fix below. Manually verified with a real progress-bar-style PowerShell loop.
+
+`ProcessRunner.java:127` — in the `\n` branch of `bufferOutput`, `discardPendingAreaLine = false;`
+erases the pending "delete the partial line already in the TextArea" request that a `\r` earlier in
+the *same chunk* just set. The old progress line is then never removed.
+
+Reproduced by replaying the exact algorithm with the `TextArea` swapped for a `StringBuilder` and one
+flush per chunk (what the 100 ms timer does in practice):
+
+```
+input   : "[download]  10%", "\r[download]  50%", "\r[download] 100%\n", "done\n"
+expected: [download] 100%\ndone\n
+actual  : [download]  50%[download] 100%\ndone\n     <-- WRONG
+```
+
+```
+input   : "first\n", "aaa", "\rbbb\n"
+expected: first\nbbb\n
+actual  : first\naaabbb\n                            <-- WRONG
+```
+
+So progress-bar output (yt-dlp, npm, pip) still leaves duplicated lines — the exact symptom
+[`ROADMAP.md`](ROADMAP.md) §5.1 was written to remove. Two of three test cases fail.
+
+**Fix:** delete the `discardPendingAreaLine = false;` line. Resetting on `\n` is not needed for
+correctness: after a newline `currentLineStartInBuffer > 0`, so a later `\r` cannot set the flag
+again, and `flushBuffer()` already clears it when it consumes it. Both failing cases pass with the
+line removed and the passing case stays passing.
+
+### 24. `stop()` blocks the JavaFX thread for up to 2 s per script · P0
+
+> ✅ **Fixed in v2.0.1.** The destroy-and-wait sequence now runs on a small daemon thread
+> spawned by `stop()`, which returns immediately; `running = false` is still set synchronously.
+> Manually verified: STOP ALL on multiple long-running scripts no longer freezes the window.
+
+`ProcessRunner.stop()` calls `process.waitFor(PROCESS_STOP_TIMEOUT_SECONDS, SECONDS)`
+(`ProcessRunner.java:220`), and every caller is on the FX thread: the tab's STOP button
+(`OutputPanel.java:153`), `Tab.setOnClosed` (`OutputPanel.java:124`) and `MainWindow.handleStopAll`
+(`MainWindow.java:259`), which `cleanup()` also calls on window close.
+
+The defect pre-dates v2.0.0, but item 2 (descendant enumeration) and the bounded pool of 8 made it
+much worse: **STOP ALL, or closing the window, can freeze the UI for up to ~16 seconds** when
+processes don't die promptly.
+
+**Fix:** do the destroy-and-wait off the FX thread — hand `stop()` to the executor (or a small
+single-thread stopper) and let the existing `onStatusChange` callback update the UI when it
+completes. The `running = false` flag can still be set synchronously so the UI reacts immediately.
+
+### 25. Re-running a group stacks N modal dialogs · P0
+
+> ✅ **Fixed in v2.0.1.** `ScriptListPanel` now takes a separate `onRunGroup` callback;
+> `MainWindow.handleRunGroup` filters out already-running/queued entries before looping, so the
+> per-card warning never fires from a group click. Manually verified.
+
+`ScriptListPanel.createGroupHeader` runs a group with `groupEntries.forEach(onRun)`
+(`ScriptListPanel.java:162`), and `MainWindow.handleRunScript` answers an already-running script with
+a blocking `DeleteConfirmDialog.showAlreadyRunning()` (`MainWindow.java:216`). Running a group of 10
+where 5 are already going means clicking through 5 modal dialogs in a row.
+
+**Fix:** make group-run skip already-running entries silently, or collect them into a single summary
+alert. The simplest version is a separate code path that filters
+`!runningProcesses.containsKey(id)` before looping — the per-card RUN button keeps its current
+warning, which is still the right behaviour for an explicit single click.
+
+### 26. Queued scripts are shown and counted as running · P1
+
+> ✅ **Fixed in v2.0.1** for the card indicator: a new 🟡 "queued" state
+> (`ScriptListPanel.updateScriptQueuedStatus`) is applied at submit time, and `ProcessRunner.run()`
+> fires the real `onStatusChange(id, true)` as its first action once a thread actually picks it
+> up. **Not fixed:** "Running: N" still counts queued entries (it reads `runningProcesses.size()`,
+> and a queued runner is still in that map) - out of scope for the minimal version of this fix.
+
+With `newFixedThreadPool(MAX_CONCURRENT_SCRIPTS)` (8), `handleRunScript` puts the runner in
+`runningProcesses` and calls `updateScriptStatus(id, true)` **before** `executorService.submit`
+(`MainWindow.java:241–248`). Script 9 and beyond therefore show 🟢, inflate "Running: N", and open a
+tab titled 🟢 while they are merely queued.
+
+Two follow-on effects: `stop()` on a queued runner does nothing visible, because
+`process == null` skips the whole body — no tab update, no `onStatusChange`; and when the queue does
+reach it, `running` is already `false`, so the loop breaks immediately and it prints
+`>>> All commands completed.` with a ✓ despite never having executed a command.
+
+**Fix:** introduce a third state (queued) rather than reusing "running" — a distinct indicator and a
+tab title that says so. Minimum viable version: have `ProcessRunner.run()` fire
+`onStatusChange(id, true)` as its first action, and have `handleRunScript` mark the card queued
+instead of running.
+
+### 27. After STOP the tab title ends as "✓ success" · P1
+
+> ✅ **Fixed in v2.0.1.** The completion block is now guarded with `if (running)`. Manually verified.
+
+`stop()` posts `tab.setText(name + STATUS_TERMINATED)` (`ProcessRunner.java:232`), but the runner
+thread then leaves the command loop, falls through to `appendOutput(">>> All commands completed.")`
+and posts `tab.setText(name + STATUS_SUCCESS)` (`ProcessRunner.java:79–80`). The later post wins, so
+a deliberately stopped script reports success.
+
+**Fix:** guard the completion block with `if (running)`, and emit the "all commands completed"
+line/title only on a natural finish.
+
+### 28. The custom scroll handler doesn't consume the event · P2
+
+> ✅ **Fixed in v2.0.1** — added `e.consume();`.
+
+`ScriptListPanel.java:88` adjusts `scrollPane.setVvalue(...)` on `setOnScroll` but never calls
+`e.consume()`, so the event keeps bubbling to the `ScrollPane`, whose own skin handler scrolls again.
+The effective speed is `SCROLL_SPEED_FACTOR + 1`, not `SCROLL_SPEED_FACTOR`.
+
+**Fix:** add `e.consume();` — then the constant means what it says.
+
+### 29. Test-scope jars ship inside the app-image · P2
+
+> ✅ **Fixed in v2.0.1** — added `<includeScope>runtime</includeScope>`. Verified: a clean
+> `mvn package` no longer copies any `junit-*`/`opentest4j`/`apiguardian-api` jar into `target/libs`.
+
+`maven-dependency-plugin:copy-dependencies` does **not** filter by scope unless told to. Despite
+being declared `<scope>test</scope>`, the JUnit stack lands in `target/libs`, inside the app-image,
+and on the runtime classpath in `app/EAShell.cfg`:
+
+```
+junit-jupiter-params  578 KB
+junit-jupiter-api     211 KB
+junit-platform-commons 137 KB
+opentest4j             14 KB
+apiguardian-api         7 KB   → 947 KB total
+```
+
+**Fix:** add `<includeScope>runtime</includeScope>` to the `copy-dependencies` configuration in
+`pom.xml`. See [`PACKAGING.md`](PACKAGING.md) §2.
+
+### 30. `package.ps1` assumes `mvn` is on PATH · P3
+
+> ✅ **Fixed in v2.0.1**, partially: the script now checks `Get-Command mvn` first and fails with
+> a clear message instead of a confusing "mvn not recognized" error. A `mvnw`/`mvnw.cmd` wrapper
+> (the more complete fix) is still not done.
+
+The script calls `mvn clean package` directly. On this machine Maven is not on PATH at all — it only
+exists as a wrapper distribution under `~/.m2/wrapper/dists/`. The script already resolves `jpackage`
+carefully and errors clearly when it is missing; `mvn` deserves the same treatment, or the project
+should carry a `mvnw`/`mvnw.cmd` wrapper so the build is reproducible without a system Maven.
+
+### 31. Stale comment: `runningProcesses` keyed by name · P3
+
+> ✅ **Fixed in v2.0.1.**
+
+`MainWindow.java:59` still reads `Map of active processes: script_name -> ProcessRunner`. It has been
+keyed by `ScriptEntry.getId()` since v1.2.7, and the id-vs-name distinction is exactly the thing a
+reader must not get wrong here.
+
+### 32. A script with zero commands passes validation · P3
+
+> ✅ **Fixed in v2.0.1** — added the `!commands.isEmpty()` check plus a listener on
+> `commandsArea.textProperty()`. Manually verified: OK stays disabled with a blank commands box.
+
+`ScriptDialog.wireValidation` checks name, path and name-uniqueness (`ScriptDialog.java:74–89`) but
+not the command list. A script with an empty commands box saves fine and, when run, immediately
+reports `>>> All commands completed.` with a ✓ having done nothing.
+
+**Fix:** include `!commands.isEmpty()` in the validation predicate. It needs a listener on
+`commandsArea.textProperty()` too, which is currently not wired.
+
+### Suggested order for these
+
+All ten shipped together in v2.0.1, in roughly this order:
+
+1. Items **23, 27, 28** — roughly five lines total, and they fix the most visible wrong behaviour.
+2. Item **29** — one line in `pom.xml`, before the next release is packaged.
+3. Item **25** — small and self-contained.
+4. Items **24, 26** — these needed a design decision (moving `stop()` off the FX thread; introducing
+   a queued state) — see their entries above for what shipped vs. what's still open (item 26's
+   "Running: N" counter).
+5. Items **30, 31, 32** — housekeeping.
 
 ---
 

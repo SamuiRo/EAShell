@@ -5,7 +5,7 @@
 
     <groupId>com.ealshell</groupId>
     <artifactId>EAShell</artifactId>
-    <version>2.0.0</version>
+    <version>2.0.1</version>
 
     <name>EAShell</name>
     <url>http://www.example.com</url>
@@ -145,6 +145,9 @@
                         </goals>
                         <configuration>
                             <outputDirectory>${project.build.directory}/libs</outputDirectory>
+                            <!-- Without this, copy-dependencies ignores <scope>test</scope> and
+                                 ships the JUnit stack inside the packaged app-image too. -->
+                            <includeScope>runtime</includeScope>
                         </configuration>
                     </execution>
                 </executions>
@@ -221,12 +224,12 @@
                                 </opts>
                             </jre>
                             <versionInfo>
-                                <fileVersion>2.0.0.0</fileVersion>
-                                <txtFileVersion>2.0.0</txtFileVersion>
+                                <fileVersion>2.0.1.0</fileVersion>
+                                <txtFileVersion>2.0.1</txtFileVersion>
                                 <fileDescription>EAShell - Command Line Interface Launcher</fileDescription>
                                 <copyright>Copyright © 2025</copyright>
-                                <productVersion>2.0.0.0</productVersion>
-                                <txtProductVersion>2.0.0</txtProductVersion>
+                                <productVersion>2.0.1.0</productVersion>
+                                <txtProductVersion>2.0.1</txtProductVersion>
                                 <productName>EAShell</productName>
                                 <internalName>EAShell</internalName>
                                 <originalFilename>EAShell.exe</originalFilename>
