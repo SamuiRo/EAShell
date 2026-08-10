@@ -23,10 +23,13 @@ EAShell is a lightweight desktop application designed to simplify working with c
 
 - **🚀 Quick Script Execution** - Run multiple commands with a single click
 - **📁 Working Directory Support** - Execute scripts in specific folders
-- **📟 Real-time Console Output** - Monitor execution in separate tabs
-- **💾 Persistent Storage** - Scripts are saved in `eashell_data.json` for easy backup and transfer
+- **🗂️ Script Groups** - Organize scripts into collapsible groups, with a one-click "run whole group" action
+- **⌨️ Interactive Input** - Answer a running process's prompts (e.g. `Read-Host`) from a stdin field under the console
+- **📟 Real-time Console Output** - Monitor execution in separate tabs, with progress-bar (`\r`) and ANSI-color noise cleaned up
+- **💾 Persistent, Crash-Safe Storage** - Scripts are saved under your user profile (`%USERPROFILE%\.eashell\`), written atomically, and recovered gracefully if the file ever gets corrupted
 - **🎨 Modern UI** - Clean, dark-themed interface built with JavaFX
-- **⚡ Multi-threaded** - Run multiple scripts simultaneously without blocking
+- **⚡ Multi-threaded** - Run multiple scripts simultaneously (up to 8 at once) without blocking
+- **📦 Standalone Windows build** - `scripts/package.ps1` produces a self-contained `.exe` that needs no Java installed
 - **🖥️ Cross-platform** - Works on Windows, Linux, and macOS
 
 ---
@@ -61,11 +64,16 @@ EAShell is a lightweight desktop application designed to simplify working with c
 
 ### Installation
 
-#### Option 1: Download Pre-built Executable (Windows)
+#### Option 1: Standalone build (Windows, no Java required)
 
-1. Download `EAShell.exe` from the releases section
-2. Extract the archive
-3. Run `EAShell.exe`
+```bash
+powershell -File scripts/package.ps1
+```
+
+This produces `target/dist/EAShell/` - a self-contained folder (its own bundled Java runtime
+included) with `EAShell.exe` inside. Copy the whole `EAShell` folder wherever you want to run it
+from (not from inside `target/`, since `mvn clean` wipes that directory). See
+[`docs/PACKAGING.md`](docs/PACKAGING.md) for details, including the (not yet built) MSI installer path.
 
 #### Option 2: Build from Source
 
@@ -78,7 +86,7 @@ cd eashell
 mvn clean package
 
 # Run the application
-java -jar target/EAShell-1.2.10.jar
+java -jar target/EAShell-2.0.0.jar
 ```
 
 #### Option 3: Run with Maven
@@ -96,9 +104,11 @@ mvn clean javafx:run
 1. Click the **[+ NEW]** button in the top bar
 2. Fill in the script details:
     - **Name**: A descriptive name for your script
-    - **Commands**: One or more CLI commands to execute (one per line)
     - **Working Directory**: The folder where commands should run
-3. Click **Save**
+    - **Group** *(optional)*: Pick an existing group or type a new one - scripts render under a
+      collapsible section per group, with an "Ungrouped" section for scripts without one
+    - **Commands**: One or more CLI commands to execute (one per line)
+3. Click **OK** (disabled until the name is filled in and the working directory exists)
 
 ### Running a Script
 
@@ -110,14 +120,20 @@ mvn clean javafx:run
 
 - **Edit**: Click the **[✎ EDIT]** button to modify a script
 - **Delete**: Click the **[✗ DELETE]** button to remove a script
-- **Stop**: Use **[⏹ STOP]** in the console tab or **[⏹ STOP ALL]** to terminate running scripts
+- **Stop**: Use **[⏹ STOP]** in the console tab or **[⏹ STOP ALL]** to terminate running scripts (this
+  also stops anything the script itself spawned, like a dev server or a `node` child process)
+- **Run a whole group**: Click the **[▶ RUN GROUP]** button in a group's header to run every script
+  in it
+- **Answer a prompt**: If a running command asks for input, type it into the field under the console
+  output and press Enter
 
 ### Transferring Scripts
 
-All scripts are stored in `eashell_data.json` in the application directory. To transfer your scripts:
+Scripts are stored in `eashell_data.json` under `%USERPROFILE%\.eashell\` (not the application
+directory - this is independent of where you launch EAShell from). To transfer your scripts:
 
-1. Locate the `eashell_data.json` file
-2. Copy it to your new installation
+1. Locate `%USERPROFILE%\.eashell\eashell_data.json`
+2. Copy it to your new installation's `%USERPROFILE%\.eashell\` folder
 3. Replace the existing file (or merge manually if needed)
 
 ---
@@ -127,26 +143,30 @@ All scripts are stored in `eashell_data.json` in the application directory. To t
 ```
 eashell/
 ├── src/main/java/com/eashell/
-│   ├── App.java                    # Application entry point
+│   ├── App.java                    # Application entry point (checks the single-instance lock)
+│   ├── Launcher.java                # Packaging-only entry point (jpackage/java -jar)
 │   ├── model/
-│   │   ├── ScriptEntry.java        # Script data model
-│   │   └── ScriptRepository.java   # JSON persistence layer
+│   │   ├── ScriptEntry.java        # Script data model (id, name, group, workingDir, commands)
+│   │   └── ScriptRepository.java   # JSON persistence: atomic save, corrupt-file recovery, migration
 │   ├── service/
-│   │   └── ProcessRunner.java      # Script execution engine
+│   │   └── ProcessRunner.java      # Script execution engine, incl. stdin
 │   ├── ui/
 │   │   ├── MainWindow.java         # Main application window
 │   │   ├── components/
 │   │   │   ├── OutputPanel.java    # Console output panel
-│   │   │   ├── ScriptListPanel.java # Script list panel
+│   │   │   ├── ScriptListPanel.java # Script list panel (grouped)
 │   │   │   └── TopBar.java         # Top navigation bar
 │   │   └── dialogs/
 │   │       ├── ScriptDialog.java   # Add/Edit script dialog
 │   │       └── DeleteConfirmDialog.java
 │   └── util/
 │       ├── Constants.java          # Application constants
-│       └── StyleManager.java       # UI styling
+│       ├── StyleManager.java       # Style-class-name constants + widget factories
+│       └── SingleInstanceLock.java # Prevents two copies running at once
+├── src/main/resources/styles/app.css  # All colors and CSS rules
+├── scripts/package.ps1             # Builds a self-contained app-image (see docs/PACKAGING.md)
 ├── pom.xml                         # Maven configuration
-└── eashell_data.json              # Script storage (auto-generated)
+└── %USERPROFILE%\.eashell\eashell_data.json  # Script storage (auto-generated, not in the repo)
 ```
 
 ---
@@ -155,15 +175,18 @@ eashell/
 
 ### System-Specific Execution
 
-- **Windows**: Commands are executed via PowerShell with `-NoProfile` and `-ExecutionPolicy Bypass`
+- **Windows**: Commands are executed via PowerShell with `-NoProfile` and `-ExecutionPolicy Bypass`,
+  with output forced to UTF-8 and `NO_COLOR`/`TERM=dumb` set so ANSI escapes aren't emitted
 - **Linux/macOS**: Commands are executed via `sh -c`
 
 ### Performance Settings
 
-The application includes optimized settings for output handling:
+The application includes optimized settings for output handling (see `Constants.java`, the
+authoritative source for these numbers):
 - UI update interval: 100ms
-- Buffer flush threshold: 8KB
-- Maximum output buffer: 500KB per script
+- Buffer flush threshold: 4KB
+- Maximum output buffer: 10,000 characters per script
+- Concurrent scripts: up to 8 at once (further RUNs queue rather than piling up threads)
 
 ---
 
@@ -205,15 +228,20 @@ Contributions are welcome! Here's how you can help:
 ### Build Tools
 
 - **Maven** - Dependency management and build automation
-- **Launch4j** - Windows executable generation
+- **Launch4j** - Windows executable generation (requires a system JRE 17+ to run)
+- **jpackage** (JDK 17+, bundled) - self-contained app-image with its own runtime, via `scripts/package.ps1`
 
 ---
 
 ## 🐛 Troubleshooting
 
 ### Application won't start
-- Ensure Java 17+ is installed: `java -version`
-- Check that `JAVA_HOME` environment variable is set correctly
+- If you're running `target/EAShell.exe` (the Launch4j build) or `java -jar ...`: ensure Java 17+ is
+  installed (`java -version`) and `JAVA_HOME` is set correctly
+- If you're running the standalone app-image build (`target/dist/EAShell/EAShell.exe`), it carries
+  its own Java runtime and needs neither of the above
+- "EAShell is already running" warning: only one instance can run at a time (by design, so two
+  copies can't silently overwrite each other's data) - close the existing window first
 
 ### Scripts fail to execute
 - Verify the working directory exists and is accessible
@@ -221,8 +249,11 @@ Contributions are welcome! Here's how you can help:
 - Check command syntax is correct for your operating system
 
 ### JSON file corruption
-- Backup your `eashell_data.json` regularly
-- If corrupted, delete the file and restart the application (scripts will be lost)
+- The app detects invalid JSON automatically: it renames the broken file to
+  `eashell_data.json.corrupt-<timestamp>` next to the real one, resets to an empty list, and shows an
+  alert explaining what happened - your scripts aren't silently lost, and the broken file is still
+  there to inspect or recover data from by hand
+- Still worth backing up `%USERPROFILE%\.eashell\eashell_data.json` regularly
 
 ---
 
