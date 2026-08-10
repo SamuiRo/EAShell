@@ -12,6 +12,7 @@ import com.eashell.util.Constants;
 import com.eashell.util.StyleManager;
 import javafx.application.Platform;
 import javafx.scene.Scene;
+import javafx.scene.control.Alert;
 import javafx.scene.control.SplitPane;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TextArea;
@@ -87,6 +88,16 @@ public class MainWindow {
      */
     public void show() {
         primaryStage.setTitle(Constants.APP_TITLE); // "EA Shell"
+
+        // Data file was invalid JSON and got reset - tell the user before anything else,
+        // since otherwise an empty script list with no explanation looks like data loss.
+        if (repository.wasDataFileCorrupt()) {
+            new Alert(Alert.AlertType.WARNING,
+                    "Your saved script list was corrupted and could not be read, so it was reset "
+                            + "to empty.\n\nThe broken file was saved as:\n"
+                            + repository.getCorruptDataFileBackupPath())
+                    .showAndWait();
+        }
 
         // === MAIN CONTAINER (BorderPane) ===
         // Allows positioning elements: top, center, bottom, left, right

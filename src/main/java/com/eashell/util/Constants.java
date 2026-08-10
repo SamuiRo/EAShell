@@ -2,10 +2,17 @@ package com.eashell.util;
 
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 
 public class Constants {
     // Files
-    public static final String DATA_FILE = "eashell_data.json";
+    public static final String DATA_FILE_NAME = "eashell_data.json";
+    // Per-user location, independent of the launch directory - required for an installed app,
+    // which cannot rely on being able to write next to its own executable.
+    public static final Path DATA_DIR = Path.of(System.getProperty("user.home"), ".eashell");
+    public static final Path DATA_FILE = DATA_DIR.resolve(DATA_FILE_NAME);
+    // Old CWD-relative location, kept only to migrate existing users' data on first run.
+    public static final Path LEGACY_DATA_FILE = Path.of(DATA_FILE_NAME);
 
     // Buffer settings
     public static final int MAX_BUFFER_SIZE = 10000;
