@@ -20,6 +20,9 @@ public class ProcessRunner implements Runnable {
     private volatile boolean running = true;
     private final StringBuilder outputBuffer = new StringBuilder();
     private long lastUIUpdate = 0;
+    private int pendingLineLength = 0;
+    private int currentLineStartInBuffer = 0;
+    private boolean discardPendingAreaLine = false;
 
     public ProcessRunner(ScriptEntry entry, TextArea outputArea, Tab tab) {
         this.entry = entry;
@@ -41,12 +44,15 @@ public class ProcessRunner implements Runnable {
                 if (System.getProperty("os.name").toLowerCase().contains("windows")) {
 
                     //  pb.command("cmd.exe", "/c", command);
-                    pb.command("powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", command);
+                    String utf8Command = "[Console]::OutputEncoding=[System.Text.Encoding]::UTF8; " + command;
+                    pb.command("powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", utf8Command);
                 } else {
                     pb.command("sh", "-c", command);
                 }
 
                 pb.redirectErrorStream(true);
+                pb.environment().put("NO_COLOR", "1");
+                pb.environment().put("TERM", "dumb");
                 process = pb.start();
 
                 Thread readerThread = new Thread(this::readProcessOutput);
@@ -73,7 +79,7 @@ public class ProcessRunner implements Runnable {
 
     private void readProcessOutput() {
         try (BufferedReader reader = new BufferedReader(
-                new InputStreamReader(process.getInputStream()))) {
+                new InputStreamReader(process.getInputStream(), Constants.CONSOLE_CHARSET))) {
 
             char[] buffer = new char[Constants.READER_BUFFER_SIZE];
             int charsRead;
@@ -93,7 +99,24 @@ public class ProcessRunner implements Runnable {
 
     private void bufferOutput(String text) {
         synchronized (outputBuffer) {
-            outputBuffer.append(text);
+            // Emulate a terminal's carriage-return-driven line overwrite: a bare \r rewinds
+            // to the start of the current (not yet newline-terminated) line instead of
+            // producing a new one, so progress bars collapse into a single updating line.
+            for (int i = 0; i < text.length(); i++) {
+                char c = text.charAt(i);
+                if (c == '\r') {
+                    outputBuffer.setLength(currentLineStartInBuffer);
+                    if (currentLineStartInBuffer == 0) {
+                        discardPendingAreaLine = true;
+                    }
+                } else {
+                    outputBuffer.append(c);
+                    if (c == '\n') {
+                        currentLineStartInBuffer = outputBuffer.length();
+                        discardPendingAreaLine = false;
+                    }
+                }
+            }
 
             long now = System.currentTimeMillis();
             if (now - lastUIUpdate > Constants.UI_UPDATE_INTERVAL_MS ||
@@ -107,9 +130,24 @@ public class ProcessRunner implements Runnable {
         synchronized (outputBuffer) {
             if (outputBuffer.length() > 0) {
                 String text = outputBuffer.toString();
+                boolean discardPreviousLine = discardPendingAreaLine;
+                int previousPendingLineLength = pendingLineLength;
                 outputBuffer.setLength(0);
+                currentLineStartInBuffer = 0;
+                discardPendingAreaLine = false;
+
+                int lastNewline = text.lastIndexOf('\n');
+                int newTailLength = lastNewline == -1 ? text.length() : text.length() - lastNewline - 1;
+                pendingLineLength = (discardPreviousLine || lastNewline != -1)
+                        ? newTailLength
+                        : previousPendingLineLength + newTailLength;
 
                 Platform.runLater(() -> {
+                    if (discardPreviousLine && previousPendingLineLength > 0) {
+                        int len = outputArea.getLength();
+                        outputArea.deleteText(Math.max(0, len - previousPendingLineLength), len);
+                    }
+
                     outputArea.appendText(text);
 
                     if (outputArea.getLength() > Constants.MAX_BUFFER_SIZE) {

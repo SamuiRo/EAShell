@@ -1,5 +1,8 @@
 package com.eashell.util;
 
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
+
 public class Constants {
     // Files
     public static final String DATA_FILE = "eashell_data.json";
@@ -13,11 +16,13 @@ public class Constants {
     // Process settings
     public static final int PROCESS_STOP_TIMEOUT_SECONDS = 2;
     public static final int EXECUTOR_SHUTDOWN_TIMEOUT_SECONDS = 5;
+    public static final Charset CONSOLE_CHARSET = StandardCharsets.UTF_8;
 
     // UI dimensions
     public static final int WINDOW_WIDTH = 1400;
     public static final int WINDOW_HEIGHT = 800;
     public static final double SPLIT_PANE_DIVIDER_POSITION = 0.4;
+    public static final double SCROLL_SPEED_FACTOR = 4;
 
     // UI texts
     public static final String APP_TITLE = "EA Shell";

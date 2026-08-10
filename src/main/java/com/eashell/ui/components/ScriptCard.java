@@ -8,8 +8,7 @@ import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
-import javafx.scene.paint.Color;
-import javafx.scene.effect.DropShadow;
+import javafx.scene.CacheHint;
 
 import java.util.function.Consumer;
 
@@ -62,14 +61,13 @@ public class ScriptCard extends VBox {
         setPadding(new Insets(15));
 
         // === CARD STYLING ===
-        // Dark background with gradient and rounded corners
+        // Dark background with gradient and rounded corners; the drop shadow lives in the
+        // CSS (StyleManager.getCardStyle()), not here.
         setStyle(StyleManager.getCardStyle());
 
-        // === SHADOW EFFECT ===
-        // Green-purple shadow around card (inspired by Keqing from Genshin Impact)
-        DropShadow shadow = new DropShadow();
-        shadow.setColor(Color.rgb(0, 255, 65, 0.3)); // Semi-transparent green
-        setEffect(shadow);
+        // Rasterize the card so the CSS Gaussian blur isn't recomputed every scroll frame.
+        setCache(true);
+        setCacheHint(CacheHint.SPEED);
 
         // === ROW WITH NAME AND STATUS ===
         HBox titleBox = createTitleBox();

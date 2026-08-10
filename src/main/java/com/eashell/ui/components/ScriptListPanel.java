@@ -77,6 +77,13 @@ public class ScriptListPanel extends VBox {
         scriptListContainer.setPadding(new Insets(10));
         scrollPane.setContent(scriptListContainer);
 
+        // JavaFX derives the wheel step from content height, so it shrinks as the list
+        // grows. Scale it back up to a fixed, comfortable speed.
+        scriptListContainer.setOnScroll(e -> {
+            double delta = e.getDeltaY() * Constants.SCROLL_SPEED_FACTOR;
+            scrollPane.setVvalue(scrollPane.getVvalue() - delta / scriptListContainer.getHeight());
+        });
+
         // ScrollPane stretches to full available height
         VBox.setVgrow(scrollPane, Priority.ALWAYS);
 
