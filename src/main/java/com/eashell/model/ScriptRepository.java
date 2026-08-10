@@ -14,6 +14,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 public class ScriptRepository {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
@@ -104,6 +105,7 @@ public class ScriptRepository {
                 if (loaded != null) {
                     entries.clear();
                     entries.addAll(loaded);
+                    backfillMissingIds();
                 }
             }
         } catch (JsonSyntaxException e) {
@@ -111,6 +113,25 @@ public class ScriptRepository {
         } catch (IOException e) {
             System.err.println("Error loading entries: " + e.getMessage());
             e.printStackTrace();
+        }
+    }
+
+    /**
+     * Data files saved before ids existed deserialize with a null id. Assign a stable one
+     * and persist it immediately so identity doesn't keep changing across relaunches -
+     * runningProcesses/scriptCards are keyed by id, so a stable id is what lets renaming a
+     * running script keep working.
+     */
+    private void backfillMissingIds() {
+        boolean anyMissing = false;
+        for (ScriptEntry entry : entries) {
+            if (entry.getId() == null) {
+                entry.setId(UUID.randomUUID().toString());
+                anyMissing = true;
+            }
+        }
+        if (anyMissing) {
+            save();
         }
     }
 

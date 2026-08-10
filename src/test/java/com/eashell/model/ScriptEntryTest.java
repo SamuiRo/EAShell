@@ -7,25 +7,34 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 class ScriptEntryTest {
 
     @Test
-    void equalityIsBasedOnNameOnly() {
-        ScriptEntry a = new ScriptEntry("build", "C:\\a", List.of("npm install"));
-        ScriptEntry b = new ScriptEntry("build", "C:\\different", List.of("npm test"));
+    void equalityIsBasedOnIdOnly() {
+        ScriptEntry a = new ScriptEntry("same-id", "build", "C:\\a", List.of("npm install"));
+        ScriptEntry b = new ScriptEntry("same-id", "renamed", "C:\\different", List.of("npm test"));
 
         assertEquals(a, b);
         assertEquals(a.hashCode(), b.hashCode());
     }
 
     @Test
-    void entriesWithDifferentNamesAreNotEqual() {
+    void entriesWithDifferentIdsAreNotEqualEvenWithTheSameName() {
+        // The 3-arg constructor mints a fresh id every time - two "build" entries created
+        // independently must not collide, unlike the old name-based equality.
         ScriptEntry a = new ScriptEntry("build", "C:\\a", List.of("npm install"));
-        ScriptEntry b = new ScriptEntry("deploy", "C:\\a", List.of("npm install"));
+        ScriptEntry b = new ScriptEntry("build", "C:\\a", List.of("npm install"));
 
         assertNotEquals(a, b);
+    }
+
+    @Test
+    void constructorGeneratesANonNullId() {
+        ScriptEntry entry = new ScriptEntry("build", "C:\\a", List.of("npm install"));
+        assertNotNull(entry.getId());
     }
 
     @Test
@@ -35,6 +44,7 @@ class ScriptEntryTest {
 
         ScriptEntry restored = gson.fromJson(gson.toJson(original), ScriptEntry.class);
 
+        assertEquals(original.getId(), restored.getId());
         assertEquals(original.getName(), restored.getName());
         assertEquals(original.getWorkingDir(), restored.getWorkingDir());
         assertEquals(original.getCommands(), restored.getCommands());
@@ -42,12 +52,13 @@ class ScriptEntryTest {
 
     @Test
     void missingFieldsDeserializeToNull() {
-        // ROADMAP.md §1 relies on this: an additive field like `group` must default to null
-        // for existing data files without a migration step.
+        // ScriptRepository relies on this to detect and backfill entries saved before ids
+        // existed, and ROADMAP.md §1 relies on the same behavior for its `group` field.
         Gson gson = new Gson();
         ScriptEntry restored = gson.fromJson("{\"name\":\"build\"}", ScriptEntry.class);
 
         assertEquals("build", restored.getName());
+        assertNull(restored.getId());
         assertNull(restored.getWorkingDir());
         assertNull(restored.getCommands());
     }

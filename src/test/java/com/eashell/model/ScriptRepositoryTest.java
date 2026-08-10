@@ -41,16 +41,36 @@ class ScriptRepositoryTest {
         ScriptEntry original = new ScriptEntry("build", "C:\\a", List.of("npm install"));
         repository.add(original);
 
-        ScriptEntry renamed = new ScriptEntry("build-renamed", "C:\\a", List.of("npm install"));
+        // Mirrors what ScriptDialog does on edit: keep the same id, change the rest.
+        ScriptEntry renamed = new ScriptEntry(original.getId(), "build-renamed", "C:\\a", List.of("npm install"));
         repository.update(original, renamed);
 
         List<ScriptEntry> afterUpdate = new ScriptRepository(dataFile, legacyFile).getAll();
         assertEquals(1, afterUpdate.size());
         assertEquals("build-renamed", afterUpdate.get(0).getName());
+        assertEquals(original.getId(), afterUpdate.get(0).getId(), "renaming must preserve the stable id");
 
         repository.remove(renamed);
 
         assertTrue(new ScriptRepository(dataFile, legacyFile).getAll().isEmpty());
+    }
+
+    @Test
+    void idsAreBackfilledAndPersistedForDataSavedBeforeIdsExisted(@TempDir Path tempDir) throws IOException {
+        Path dataFile = tempDir.resolve("eashell_data.json");
+        Path legacyFile = tempDir.resolve("legacy_unused.json");
+        Files.writeString(dataFile,
+                "[{\"name\":\"old-script\",\"workingDir\":\"C:\\\\old\",\"commands\":[\"echo hi\"]}]",
+                StandardCharsets.UTF_8);
+
+        ScriptRepository repository = new ScriptRepository(dataFile, legacyFile);
+        String backfilledId = repository.getAll().get(0).getId();
+        assertNotNull(backfilledId);
+
+        // The backfilled id must be written back immediately, not re-generated on every
+        // launch - otherwise a running script's id would drift out from under it.
+        List<ScriptEntry> reloaded = new ScriptRepository(dataFile, legacyFile).getAll();
+        assertEquals(backfilledId, reloaded.get(0).getId());
     }
 
     @Test

@@ -84,7 +84,7 @@ public class ProcessRunner implements Runnable {
         } finally {
             running = false;
             closeWriter();
-            onStatusChange.accept(entry.getName(), false);
+            onStatusChange.accept(entry.getId(), false);
         }
     }
 

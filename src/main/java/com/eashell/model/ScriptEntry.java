@@ -2,16 +2,31 @@ package com.eashell.model;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.UUID;
 
 public class ScriptEntry {
+    private String id;
     private String name;
     private String workingDir;
     private List<String> commands;
 
     public ScriptEntry(String name, String workingDir, List<String> commands) {
+        this(UUID.randomUUID().toString(), name, workingDir, commands);
+    }
+
+    public ScriptEntry(String id, String name, String workingDir, List<String> commands) {
+        this.id = id;
         this.name = name;
         this.workingDir = workingDir;
         this.commands = commands;
+    }
+
+    public String getId() {
+        return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
     }
 
     public String getName() {
@@ -43,18 +58,19 @@ public class ScriptEntry {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         ScriptEntry that = (ScriptEntry) o;
-        return Objects.equals(name, that.name);
+        return Objects.equals(id, that.id);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(name);
+        return Objects.hash(id);
     }
 
     @Override
     public String toString() {
         return "ScriptEntry{" +
-                "name='" + name + '\'' +
+                "id='" + id + '\'' +
+                ", name='" + name + '\'' +
                 ", workingDir='" + workingDir + '\'' +
                 ", commands=" + commands +
                 '}';

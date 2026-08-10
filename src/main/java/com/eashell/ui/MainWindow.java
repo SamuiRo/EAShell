@@ -162,7 +162,7 @@ public class MainWindow {
      */
     private void handleAddScript() {
         // Show dialog and get Optional<ScriptEntry>
-        ScriptDialog.showAddDialog().ifPresent(entry -> {
+        ScriptDialog.showAddDialog(repository.getAll()).ifPresent(entry -> {
             repository.add(entry);        // Save to JSON
             refreshScriptList();          // Update card list
         });
@@ -176,7 +176,7 @@ public class MainWindow {
      */
     private void handleEditScript(ScriptEntry entry) {
         // Show edit dialog with existing data
-        ScriptDialog.showEditDialog(entry).ifPresent(newEntry -> {
+        ScriptDialog.showEditDialog(entry, repository.getAll()).ifPresent(newEntry -> {
             repository.update(entry, newEntry); // Update in JSON
             refreshScriptList();                // Update card list
         });
@@ -210,7 +210,7 @@ public class MainWindow {
      */
     private void handleRunScript(ScriptEntry entry) {
         // Check if script is already running
-        if (runningProcesses.containsKey(entry.getName())) {
+        if (runningProcesses.containsKey(entry.getId())) {
             DeleteConfirmDialog.showAlreadyRunning(); // Show warning
             return;
         }
@@ -236,10 +236,10 @@ public class MainWindow {
         runner.setTab(outputTab);         // Set tab for updating title
 
         // === STEP 5: SAVE RUNNER IN MAP ===
-        runningProcesses.put(entry.getName(), runner);
+        runningProcesses.put(entry.getId(), runner);
 
         // === STEP 6: UPDATE STATUS ON CARD ===
-        updateScriptStatus(entry.getName(), true); // ⚫ -> 🟢
+        updateScriptStatus(entry.getId(), true); // ⚫ -> 🟢
 
         // === STEP 7: START IN SEPARATE THREAD ===
         // ProcessRunner implements Runnable, so can be passed to executorService
@@ -258,7 +258,7 @@ public class MainWindow {
         runningProcesses.clear(); // Clear map
 
         // Update statuses on all cards (🟢 -> ⚫)
-        scriptListPanel.getStatusLabels().forEach((name, label) ->
+        scriptListPanel.getStatusLabels().forEach((id, label) ->
                 StyleManager.setStoppedStatus(label)
         );
     }
@@ -271,18 +271,18 @@ public class MainWindow {
      * - Script finishes (running = false)
      * - User closes tab (running = false)
      *
-     * @param scriptName - script name
+     * @param scriptId - stable script id (ScriptEntry.getId()), not the display name
      * @param running - whether script is running
      */
-    private void updateScriptStatus(String scriptName, boolean running) {
+    private void updateScriptStatus(String scriptId, boolean running) {
         // Update UI in JavaFX main thread
         Platform.runLater(() -> {
             // Update status indicator on card (⚫/🟢)
-            scriptListPanel.updateScriptStatus(scriptName, running);
+            scriptListPanel.updateScriptStatus(scriptId, running);
 
             // If script stopped - remove from active processes map
             if (!running) {
-                runningProcesses.remove(scriptName);
+                runningProcesses.remove(scriptId);
             }
         });
     }
@@ -299,7 +299,7 @@ public class MainWindow {
         // refresh() rebuilds every card from scratch, so freshly built cards start
         // stopped even for scripts that are still running - reapply the authoritative
         // state from runningProcesses.
-        runningProcesses.keySet().forEach(name -> scriptListPanel.updateScriptStatus(name, true));
+        runningProcesses.keySet().forEach(id -> scriptListPanel.updateScriptStatus(id, true));
     }
 
     /**

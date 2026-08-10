@@ -127,7 +127,7 @@ public class OutputPanel extends VBox {
                 tabRunner.stop(); // Stop process
             }
             // Update status on script card (⚫ - stopped)
-            onStatusChange.accept(entry.getName(), false);
+            onStatusChange.accept(entry.getId(), false);
         });
 
         // Add new tab to TabPane and make it active

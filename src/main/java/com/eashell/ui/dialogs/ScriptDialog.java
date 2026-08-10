@@ -3,26 +3,31 @@ package com.eashell.ui.dialogs;
 import com.eashell.model.ScriptEntry;
 import com.eashell.util.StyleManager;
 import javafx.geometry.Insets;
+import javafx.scene.Node;
 import javafx.scene.control.*;
 import javafx.scene.layout.GridPane;
 import javafx.stage.DirectoryChooser;
 
 import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.InvalidPathException;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
 public class ScriptDialog {
 
-    public static Optional<ScriptEntry> showAddDialog() {
-        return showDialog("Add New Script", "Configure your script", null);
+    public static Optional<ScriptEntry> showAddDialog(List<ScriptEntry> existingEntries) {
+        return showDialog("Add New Script", "Configure your script", null, existingEntries);
     }
 
-    public static Optional<ScriptEntry> showEditDialog(ScriptEntry existingEntry) {
-        return showDialog("Edit Script", "Modify script configuration", existingEntry);
+    public static Optional<ScriptEntry> showEditDialog(ScriptEntry existingEntry, List<ScriptEntry> existingEntries) {
+        return showDialog("Edit Script", "Modify script configuration", existingEntry, existingEntries);
     }
 
-    private static Optional<ScriptEntry> showDialog(String title, String header, ScriptEntry existingEntry) {
+    private static Optional<ScriptEntry> showDialog(String title, String header, ScriptEntry existingEntry,
+                                                      List<ScriptEntry> existingEntries) {
         Dialog<ScriptEntry> dialog = new Dialog<>();
         dialog.setTitle(title);
         dialog.setHeaderText(header);
@@ -34,14 +39,48 @@ public class ScriptDialog {
         GridPane grid = createFormGrid(dialog, existingEntry);
         dialogPane.setContent(grid);
 
+        wireValidation(dialogPane, grid, existingEntry, existingEntries);
+
         dialog.setResultConverter(btn -> {
             if (btn == ButtonType.OK) {
-                return extractScriptEntry(grid);
+                return extractScriptEntry(grid, existingEntry);
             }
             return null;
         });
 
         return dialog.showAndWait();
+    }
+
+    /**
+     * Disables OK until the name and path are non-empty, the path is a real directory, and
+     * the name isn't already used by another script (renaming a script to its own current
+     * name is fine).
+     */
+    private static void wireValidation(DialogPane dialogPane, GridPane grid, ScriptEntry existingEntry,
+                                        List<ScriptEntry> existingEntries) {
+        FormData data = (FormData) grid.getUserData();
+        Node okButton = dialogPane.lookupButton(ButtonType.OK);
+
+        Runnable validate = () -> {
+            String name = data.nameField.getText().trim();
+            String path = data.pathField.getText().trim();
+
+            boolean pathIsDirectory;
+            try {
+                pathIsDirectory = !path.isEmpty() && Files.isDirectory(Path.of(path));
+            } catch (InvalidPathException e) {
+                pathIsDirectory = false;
+            }
+
+            boolean nameTaken = existingEntries.stream().anyMatch(e ->
+                    e.getName().equals(name) && (existingEntry == null || !e.getId().equals(existingEntry.getId())));
+
+            okButton.setDisable(name.isEmpty() || !pathIsDirectory || nameTaken);
+        };
+
+        data.nameField.textProperty().addListener((obs, oldVal, newVal) -> validate.run());
+        data.pathField.textProperty().addListener((obs, oldVal, newVal) -> validate.run());
+        validate.run();
     }
 
     private static GridPane createFormGrid(Dialog<ScriptEntry> dialog, ScriptEntry existingEntry) {
@@ -101,7 +140,7 @@ public class ScriptDialog {
         return grid;
     }
 
-    private static ScriptEntry extractScriptEntry(GridPane grid) {
+    private static ScriptEntry extractScriptEntry(GridPane grid, ScriptEntry existingEntry) {
         FormData data = (FormData) grid.getUserData();
 
         String name = data.nameField.getText().trim();
@@ -116,6 +155,11 @@ public class ScriptDialog {
             }
         }
 
+        // Editing must keep the original id - runningProcesses/scriptCards are keyed by it,
+        // and minting a new one here would orphan a runner the same way renaming used to.
+        if (existingEntry != null) {
+            return new ScriptEntry(existingEntry.getId(), name, path, commands);
+        }
         return new ScriptEntry(name, path, commands);
     }
 

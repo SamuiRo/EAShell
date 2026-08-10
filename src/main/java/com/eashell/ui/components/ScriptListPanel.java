@@ -38,7 +38,7 @@ public class ScriptListPanel extends VBox {
     // Container that holds all script cards
     private final VBox scriptListContainer;
 
-    // Map for quick access to cards by script name
+    // Map for quick access to cards by the script's stable id (ScriptEntry.getId())
     // Used to update status (⚫/🟢) when script starts
     private final Map<String, ScriptCard> scriptCards;
 
@@ -117,8 +117,9 @@ public class ScriptListPanel extends VBox {
         for (ScriptEntry entry : entries) {
             ScriptCard card = new ScriptCard(entry, onRun, onEdit, onDelete);
 
-            // Save card in map for quick access
-            scriptCards.put(entry.getName(), card);
+            // Save card in map for quick access, keyed by the stable id (not the display
+            // name, which is neither unique nor stable across edits)
+            scriptCards.put(entry.getId(), card);
 
             // Add card to container
             scriptListContainer.getChildren().add(card);
@@ -145,12 +146,12 @@ public class ScriptListPanel extends VBox {
      * - Script starts (running = true) -> 🟢 green with glow
      * - Script stops (running = false) -> ⚫ gray
      *
-     * @param scriptName - script name
+     * @param scriptId - stable script id
      * @param running - whether script is running
      */
-    public void updateScriptStatus(String scriptName, boolean running) {
-        // Find card by script name
-        ScriptCard card = scriptCards.get(scriptName);
+    public void updateScriptStatus(String scriptId, boolean running) {
+        // Find card by script id
+        ScriptCard card = scriptCards.get(scriptId);
 
         if (card != null) {
             if (running) {
@@ -166,7 +167,7 @@ public class ScriptListPanel extends VBox {
     /**
      * GET ALL STATUS INDICATORS
      *
-     * Returns map: script_name -> status_indicator
+     * Returns map: script_id -> status_indicator
      * Used in handleStopAll() for bulk status updates.
      *
      * @return map with status indicators of all scripts
