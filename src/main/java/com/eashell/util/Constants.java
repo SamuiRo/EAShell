@@ -13,6 +13,7 @@ public class Constants {
     public static final Path DATA_FILE = DATA_DIR.resolve(DATA_FILE_NAME);
     // Old CWD-relative location, kept only to migrate existing users' data on first run.
     public static final Path LEGACY_DATA_FILE = Path.of(DATA_FILE_NAME);
+    public static final Path LOCK_FILE = DATA_DIR.resolve("eashell.lock");
 
     // Buffer settings
     public static final int MAX_BUFFER_SIZE = 10000;

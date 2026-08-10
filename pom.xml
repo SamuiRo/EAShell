@@ -5,7 +5,7 @@
 
     <groupId>com.ealshell</groupId>
     <artifactId>EAShell</artifactId>
-    <version>1.2.9</version>
+    <version>1.2.10</version>
 
     <name>EAShell</name>
     <url>http://www.example.com</url>
@@ -160,10 +160,33 @@
                         <manifest>
                             <addClasspath>true</addClasspath>
                             <classpathPrefix>libs/</classpathPrefix>
-                            <mainClass>com.eashell.App</mainClass>
+                            <mainClass>com.eashell.Launcher</mainClass>
                         </manifest>
                     </archive>
                 </configuration>
+            </plugin>
+
+            <!-- Stage the built app JAR next to its dependencies in target/libs, so
+                 jpackage's "input" directory contains everything it needs in one place.
+                 See docs/PACKAGING.md, section 2. -->
+            <plugin>
+                <artifactId>maven-antrun-plugin</artifactId>
+                <version>3.1.0</version>
+                <executions>
+                    <execution>
+                        <id>stage-app-jar</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                        <configuration>
+                            <target>
+                                <copy file="${project.build.directory}/${project.artifactId}-${project.version}.jar"
+                                      todir="${project.build.directory}/libs"/>
+                            </target>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
 
             <!-- Launch4j Maven Plugin -->
@@ -184,7 +207,7 @@
                             <jar>target/${project.artifactId}-${project.version}.jar</jar>
                             <errTitle>EAShell Error</errTitle>
                             <classPath>
-                                <mainClass>com.eashell.App</mainClass>
+                                <mainClass>com.eashell.Launcher</mainClass>
                                 <addDependencies>true</addDependencies>
                                 <preCp>libs/*</preCp>
                             </classPath>
@@ -198,12 +221,12 @@
                                 </opts>
                             </jre>
                             <versionInfo>
-                                <fileVersion>1.2.9.0</fileVersion>
-                                <txtFileVersion>1.2.9</txtFileVersion>
+                                <fileVersion>1.2.10.0</fileVersion>
+                                <txtFileVersion>1.2.10</txtFileVersion>
                                 <fileDescription>EAShell - Command Line Interface Launcher</fileDescription>
                                 <copyright>Copyright © 2025</copyright>
-                                <productVersion>1.2.9.0</productVersion>
-                                <txtProductVersion>1.2.9</txtProductVersion>
+                                <productVersion>1.2.10.0</productVersion>
+                                <txtProductVersion>1.2.10</txtProductVersion>
                                 <productName>EAShell</productName>
                                 <internalName>EAShell</internalName>
                                 <originalFilename>EAShell.exe</originalFilename>
