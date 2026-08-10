@@ -7,9 +7,11 @@ import javafx.scene.control.Tab;
 import javafx.scene.control.TextArea;
 
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 
@@ -19,6 +21,7 @@ public class ProcessRunner implements Runnable {
     private TextArea outputArea;
     private Tab tab;
     private Process process;
+    private volatile BufferedWriter writer;
     private volatile boolean running = true;
     private final StringBuilder outputBuffer = new StringBuilder();
     private long lastUIUpdate = 0;
@@ -58,6 +61,7 @@ public class ProcessRunner implements Runnable {
                 pb.environment().put("NO_COLOR", "1");
                 pb.environment().put("TERM", "dumb");
                 process = pb.start();
+                writer = new BufferedWriter(new OutputStreamWriter(process.getOutputStream(), Constants.CONSOLE_CHARSET));
 
                 Thread readerThread = new Thread(this::readProcessOutput);
                 readerThread.setDaemon(true);
@@ -65,6 +69,7 @@ public class ProcessRunner implements Runnable {
 
                 int exitCode = process.waitFor();
                 readerThread.join(1000);
+                closeWriter();
 
                 flushBuffer();
                 appendOutput("\n>>> Exit code: " + exitCode + "\n\n");
@@ -78,6 +83,7 @@ public class ProcessRunner implements Runnable {
             Platform.runLater(() -> tab.setText(entry.getName() + " " + Constants.STATUS_ERROR));
         } finally {
             running = false;
+            closeWriter();
             onStatusChange.accept(entry.getName(), false);
         }
     }
@@ -169,6 +175,37 @@ public class ProcessRunner implements Runnable {
 
     private void appendOutput(String text) {
         bufferOutput(text);
+    }
+
+    /**
+     * Send a line of text to the running process's stdin (e.g. to answer a prompt).
+     * Not every program reads stdin - full-screen TUIs and console-handle-based
+     * prompts (like cmd's `pause`) ignore the pipe regardless.
+     */
+    public void sendInput(String line) {
+        BufferedWriter currentWriter = writer;
+        if (currentWriter == null) {
+            appendOutput(">>> No running process to receive input.\n");
+            return;
+        }
+        try {
+            currentWriter.write(line);
+            currentWriter.write(System.lineSeparator());
+            currentWriter.flush(); // without flush the child just hangs waiting for input
+            appendOutput(">>> " + line + "\n"); // local echo - the child does not echo stdin itself
+        } catch (IOException e) {
+            appendOutput("\n>>> Error sending input: " + e.getMessage() + "\n");
+        }
+    }
+
+    private void closeWriter() {
+        if (writer != null) {
+            try {
+                writer.close();
+            } catch (IOException ignored) {
+            }
+            writer = null;
+        }
     }
 
     public void stop() {

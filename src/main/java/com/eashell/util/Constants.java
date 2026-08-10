@@ -29,6 +29,7 @@ public class Constants {
     public static final String TITLE_LABEL = "⚡ Shell";
     public static final String SCRIPTS_HEADER = "📋 SCRIPTS";
     public static final String OUTPUT_HEADER = "📟 CONSOLE";
+    public static final String STDIN_PROMPT = "Type input and press Enter to send it to the running process...";
 
     // Emojis
     public static final String STATUS_RUNNING = "🟢";

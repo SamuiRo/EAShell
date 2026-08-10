@@ -94,12 +94,25 @@ public class OutputPanel extends VBox {
         // TextArea stretches to full available tab height
         VBox.setVgrow(outputArea, Priority.ALWAYS);
 
+        // === STDIN FIELD ===
+        // Lets the user answer a prompt from the running process (e.g. "y/n?").
+        TextField inputField = new TextField();
+        inputField.setPromptText(Constants.STDIN_PROMPT);
+        StyleManager.styleTextField(inputField);
+        inputField.setOnAction(e -> {
+            String line = inputField.getText();
+            if (!line.isEmpty()) {
+                runner.sendInput(line);
+                inputField.clear();
+            }
+        });
+
         // === CONTROL BUTTON PANEL ===
         // Pass runner so STOP button can stop the process
         HBox controlBox = createControlBox(runner, outputArea);
 
-        // Add text area and buttons to tab content
-        tabContent.getChildren().addAll(outputArea, controlBox);
+        // Add text area, stdin field and buttons to tab content
+        tabContent.getChildren().addAll(outputArea, inputField, controlBox);
         outputTab.setContent(tabContent);
 
         // === SAVE RUNNER IN TAB ===
