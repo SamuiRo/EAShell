@@ -1,0 +1,422 @@
+/*
+ * EAShell application stylesheet.
+ *
+ * Colors live once, as custom properties on .root, and every rule below references them -
+ * this is the single source of truth the old data:text/css, string (built by concatenating
+ * Java constants) never had. StyleManager.java no longer holds color literals; it only keeps
+ * the style-class-name constants used to pick which rule below applies (e.g. BTN_DANGER).
+ */
+
+.root {
+    -surface-base: #1a1425;
+    -surface-console: #0d0a12;
+    -surface-panel-top: #2D1B3D;
+    -surface-panel-bottom: #120e1a;
+    -card-surface: #4A2C5E;
+    -card-surface-hover: #6B4A8C;
+    -dialog-surface-top: #2d2139;
+
+    -border-default: #4a3960;
+    -border-focus: #8b6bb8;
+    -border-card: #B794D4;
+    -border-card-hover: #7DD3E8;
+    -border-tab: #4A3B5A;
+
+    -text-primary: #e8dff5;
+    -text-secondary: #b8a4e8;
+    -text-muted: #7a6b8f;
+    -text-accent: #d4af37;
+    -text-console: #7DD3E8;
+    -text-header: #F5E6FF;
+    -text-header-accent: #FFD68A;
+    -text-panel-header: #E291B5;
+
+    -accent-primary-top: #B794D4;
+    -accent-primary-bottom: #E291B5;
+    -accent-flat: #B794D4;
+    -accent-danger: #FF6B9D;
+    -accent-neutral: transparent;
+    -accent-small-hover: derive(#7DD3E8, 20%);
+
+    -bg-gradient-top: #1A0B2E;
+    -bg-gradient-bottom: #2D1B3D;
+}
+
+/* === App shell === */
+
+.app-root {
+    -fx-background-color: linear-gradient(to bottom, -bg-gradient-top, -bg-gradient-bottom);
+}
+
+.top-bar {
+    -fx-background-color: rgba(45, 27, 61, 0.9);
+    -fx-padding: 20;
+    -fx-border-color: -border-card;
+    -fx-border-width: 0 0 1 0;
+    -fx-effect: dropshadow(gaussian, rgba(125, 211, 232, 0.3), 10, 0, 0, 5);
+}
+
+.app-title {
+    -fx-font-size: 28px;
+    -fx-font-weight: bold;
+    -fx-text-fill: linear-gradient(to right, #7DD3E8, #E291B5);
+    -fx-font-family: 'Segoe UI', 'Helvetica Neue', sans-serif;
+    -fx-effect: dropshadow(gaussian, rgba(125, 211, 232, 0.5), 5, 0, 0, 0);
+}
+
+.status-label {
+    -fx-text-fill: -text-header-accent;
+    -fx-font-size: 14px;
+    -fx-font-weight: 500;
+    -fx-font-family: 'Segoe UI', 'Helvetica Neue', sans-serif;
+}
+
+/* Shared by ScriptListPanel and OutputPanel - both used the exact same gradient before. */
+.side-panel {
+    -fx-background-color: linear-gradient(to bottom, -surface-panel-top, -surface-panel-bottom);
+    -fx-background-radius: 12;
+}
+
+/* Shared by both panel headers ("SCRIPTS" / "CONSOLE"). */
+.panel-header {
+    -fx-background-color: -surface-panel-top;
+    -fx-text-fill: -text-panel-header;
+    -fx-font-size: 18px;
+    -fx-font-weight: 600;
+    -fx-font-family: 'Segoe UI', 'Helvetica Neue', sans-serif;
+}
+
+.empty-list-label {
+    -fx-text-fill: -text-muted;
+    -fx-font-size: 14px;
+    -fx-text-alignment: center;
+    -fx-font-family: 'Segoe UI', 'Helvetica Neue', sans-serif;
+}
+
+.group-header-label {
+    -fx-text-fill: -text-accent;
+    -fx-font-size: 15px;
+    -fx-font-weight: 700;
+    -fx-font-family: 'Segoe UI', 'Helvetica Neue', sans-serif;
+}
+
+.form-label {
+    -fx-text-fill: -text-secondary;
+    -fx-font-family: 'Segoe UI', 'Helvetica Neue', sans-serif;
+    -fx-font-weight: 500;
+}
+
+/* === Script card === */
+
+.script-card {
+    -fx-background-color: -card-surface;
+    -fx-background-radius: 2;
+    -fx-border-color: -border-card;
+    -fx-border-radius: 2;
+    -fx-border-width: 1;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.4), 8, 0, 0, 4);
+}
+
+.script-card:hover {
+    -fx-background-color: -card-surface-hover;
+    -fx-border-color: -border-card-hover;
+    -fx-effect: dropshadow(gaussian, rgba(125, 211, 232, 0.5), 12, 0, 0, 6);
+    -fx-cursor: hand;
+}
+
+.script-card-title {
+    -fx-text-fill: -text-header;
+    -fx-font-size: 16px;
+    -fx-font-weight: 600;
+    -fx-font-family: 'Segoe UI', 'Helvetica Neue', sans-serif;
+}
+
+.script-card-path {
+    -fx-text-fill: -text-muted;
+    -fx-font-size: 11px;
+    -fx-font-style: italic;
+    -fx-font-family: 'Segoe UI', 'Helvetica Neue', sans-serif;
+}
+
+.script-card-command {
+    -fx-text-fill: -text-secondary;
+    -fx-font-size: 12px;
+    -fx-font-family: 'Consolas', 'Courier New', monospace;
+}
+
+.status-running {
+    -fx-text-fill: -text-header-accent;
+}
+
+.status-stopped {
+    -fx-text-fill: -text-muted;
+}
+
+/* === Buttons ===
+ * Role classes (btn-primary/btn-accent/btn-neutral/btn-danger) are combined with a size
+ * class (btn-small/btn-large) by StyleManager's factory methods. Hover previously replaced
+ * the whole inline style with a fixed color/scale regardless of role - preserved here as-is,
+ * so every small button shares one hover look and every large button shares another.
+ */
+
+.btn-small, .btn-large {
+    -fx-text-fill: -text-primary;
+    -fx-font-weight: 600;
+    -fx-background-radius: 2;
+    -fx-cursor: hand;
+    -fx-font-family: 'Segoe UI', 'Helvetica Neue', sans-serif;
+}
+
+.btn-small {
+    -fx-font-size: 10px;
+    -fx-padding: 6 12;
+    -fx-border-radius: 2;
+    -fx-border-color: -border-card;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.3), 4, 0.4, 0, 1);
+}
+
+.btn-small:hover {
+    -fx-background-color: -accent-small-hover;
+    -fx-effect: dropshadow(gaussian, rgba(157, 123, 216, 0.5), 6, 0.6, 0, 1);
+}
+
+.btn-large {
+    -fx-font-size: 12px;
+    -fx-padding: 10 20;
+    -fx-effect: dropshadow(gaussian, rgba(226, 145, 181, 0.4), 6, 0, 0, 3);
+}
+
+.btn-large:hover {
+    -fx-background-color: linear-gradient(to bottom, #E291B5, #B794D4);
+    -fx-scale-x: 1.05;
+    -fx-scale-y: 1.05;
+    -fx-effect: dropshadow(gaussian, rgba(125, 211, 232, 0.6), 10, 0, 0, 5);
+}
+
+.btn-primary {
+    -fx-background-color: linear-gradient(to bottom, -accent-primary-top, -accent-primary-bottom);
+}
+
+.btn-accent {
+    -fx-background-color: -accent-flat;
+}
+
+.btn-neutral {
+    -fx-background-color: -accent-neutral;
+}
+
+.btn-danger {
+    -fx-background-color: -accent-danger;
+}
+
+/* btn-neutral is transparent, and .btn-large has no border of its own (unlike .btn-small) -
+ * without this, a large neutral button (the dialog's Cancel) would be invisible but for its
+ * text. Scoped to this exact combination so the small Browse/EDIT/CLEAR buttons - already
+ * bordered via .btn-small - and the other large buttons (colored, so already visible) are
+ * untouched. */
+.btn-large.btn-neutral {
+    -fx-border-color: -border-card;
+    -fx-border-width: 1;
+    -fx-border-radius: 2;
+}
+
+/* === Dialog and form fields ===
+ * .text-field / .text-area / .combo-box are JavaFX's own default style classes, applied
+ * automatically - no getStyleClass().add(...) call is needed for them in Java.
+ */
+
+.app-dialog {
+    -fx-background-color: linear-gradient(to bottom, -dialog-surface-top, -surface-base);
+    -fx-background-radius: 12;
+    -fx-border-color: -border-focus;
+    -fx-border-width: 1;
+    -fx-border-radius: 12;
+}
+
+/* The header-panel (icon + header text above the form) and the built-in OK/Cancel buttons
+ * were never styled even before this migration - always plain default Modena. Scoped to
+ * .app-dialog specifically so plain Alert dialogs (DeleteConfirmDialog, corrupt-file
+ * warning) keep their untouched default look. */
+.dialog-pane.app-dialog > .header-panel {
+    -fx-background-color: -surface-panel-top;
+}
+
+.dialog-pane.app-dialog > .header-panel .label {
+    -fx-text-fill: -text-header;
+    -fx-font-size: 14px;
+}
+
+.text-field, .combo-box {
+    -fx-background-color: -surface-base;
+    -fx-border-color: -border-default;
+    -fx-border-radius: 2;
+    -fx-background-radius: 2;
+    -fx-padding: 8;
+    -fx-text-fill: -text-console;
+    -fx-prompt-text-fill: -text-muted;
+    -fx-font-family: 'Segoe UI', 'Helvetica Neue', sans-serif;
+}
+
+.text-area {
+    -fx-control-inner-background: -surface-base;
+    -fx-border-color: -border-default;
+    -fx-border-radius: 2;
+    -fx-background-radius: 2;
+    -fx-text-fill: -text-console;
+    -fx-prompt-text-fill: -text-muted;
+    -fx-font-family: 'Consolas', 'Courier New', monospace;
+}
+
+.text-field:focused, .text-area:focused, .combo-box:focused {
+    -fx-border-color: -border-focus;
+    -fx-effect: dropshadow(gaussian, rgba(157, 123, 216, 0.4), 8, 0.5, 0, 0);
+}
+
+.tab-content-box {
+    -fx-background-color: -surface-base;
+    -fx-background-radius: 8;
+}
+
+.output-area {
+    -fx-control-inner-background: -surface-console;
+    -fx-background-color: -surface-console;
+    -fx-text-fill: -text-console;
+    -fx-font-family: 'Consolas', 'Courier New', monospace;
+    -fx-font-size: 12px;
+    -fx-border-color: -border-default;
+    -fx-border-radius: 2;
+    -fx-background-radius: 2;
+}
+
+/* === Stock control chrome ===
+ * These target JavaFX's own default style classes (scroll-pane, tab-pane, text-area,
+ * split-pane, titled-pane, combo-box), which is why pseudo-classes and sub-structures here
+ * were never reachable through setStyle() on the control itself.
+ */
+
+.scroll-pane, .scroll-pane .viewport, .scroll-pane .content {
+    -fx-background: transparent;
+    -fx-background-color: transparent;
+}
+
+.scroll-bar {
+    -fx-background-color: transparent;
+}
+
+.scroll-bar .thumb {
+    -fx-background-color: -border-default;
+    -fx-background-radius: 6;
+}
+
+.scroll-bar .thumb:hover {
+    -fx-background-color: -border-focus;
+}
+
+.tab-pane {
+    -fx-background-color: -surface-panel-top;
+    -fx-background-insets: 0;
+    -fx-padding: 0;
+    -fx-border-color: -border-tab;
+    -fx-border-radius: 2;
+    -fx-background-radius: 2;
+    -fx-tab-min-width: 100px;
+    -fx-tab-min-height: 30px;
+}
+
+.tab-pane .tab-header-area {
+    -fx-background-color: -surface-panel-top;
+    -fx-padding: 0 0 0 5px;
+}
+
+.tab-pane .tab-header-background {
+    -fx-background-color: -surface-panel-top;
+}
+
+.tab-pane .tab-content-area {
+    -fx-background-color: -surface-panel-top;
+}
+
+.tab-pane .tab {
+    -fx-background-color: #3A294A;
+    -fx-border-color: -border-tab;
+    -fx-background-radius: 5 5 0 0;
+    -fx-padding: 5 10;
+}
+
+.tab-pane .tab:selected {
+    -fx-background-color: -border-tab;
+}
+
+.tab-pane .tab-label {
+    -fx-text-fill: -text-secondary;
+}
+
+.separator {
+    -fx-background-color: -border-default;
+}
+
+.text-area .content {
+    -fx-background-color: -surface-console;
+}
+
+.text-area:focused .content,
+.text-area:window-unfocused .content,
+.text-area:window-unfocused {
+    -fx-background-color: -surface-console !important;
+}
+
+.split-pane {
+    -fx-background-color: transparent;
+    -fx-border-color: #000000;
+    -fx-border-width: 1;
+}
+
+.split-pane > .split-pane-divider {
+    -fx-background-color: -border-tab;
+    -fx-background-insets: 0;
+    -fx-padding: 0 3 0 3;
+    -fx-border-color: transparent;
+}
+
+.split-pane > .split-pane-divider:hover {
+    -fx-background-color: #7A5B9A;
+}
+
+.titled-pane > .title {
+    -fx-background-color: -surface-panel-top;
+    -fx-background-radius: 4;
+    -fx-border-color: -border-tab;
+    -fx-border-radius: 4;
+}
+
+.titled-pane > .title > .arrow-button > .arrow {
+    -fx-background-color: -text-secondary;
+}
+
+.titled-pane > *.content {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+}
+
+.combo-box .arrow-button {
+    -fx-background-color: transparent;
+}
+
+.combo-box .arrow {
+    -fx-background-color: -text-secondary;
+}
+
+.combo-box-popup .list-view {
+    -fx-background-color: -surface-base;
+    -fx-border-color: -border-default;
+}
+
+.combo-box-popup .list-cell {
+    -fx-background-color: -surface-base;
+    -fx-text-fill: -text-console;
+}
+
+.combo-box-popup .list-cell:hover {
+    -fx-background-color: -card-surface-hover;
+    -fx-text-fill: -text-console;
+}

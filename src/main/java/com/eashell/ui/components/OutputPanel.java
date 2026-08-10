@@ -42,17 +42,18 @@ public class OutputPanel extends VBox {
         setPadding(new Insets(20));
 
         // Apply dark gradient background to panel
-        setStyle(StyleManager.getOutputPanelStyle());
+        getStyleClass().add("side-panel");
 
         // === HEADER "📟 CONSOLE" ===
         Label header = new Label(Constants.OUTPUT_HEADER); // "📟 CONSOLE"
-        header.setStyle(StyleManager.getHeaderStyle()); // Purple glowing text
+        header.getStyleClass().add("panel-header"); // Purple glowing text
 
         // === TAB CONTAINER ===
+        // Colors/borders come from the .tab-pane rule in app.css - TabPane carries that
+        // style class by default.
         outputTabPane = new TabPane();
         // Allow closing tabs (X button on each tab)
         outputTabPane.setTabClosingPolicy(TabPane.TabClosingPolicy.ALL_TABS);
-        outputTabPane.setStyle(StyleManager.getTabPaneStyle());
 
         // TabPane stretches to full available height
         VBox.setVgrow(outputTabPane, Priority.ALWAYS);
@@ -83,22 +84,22 @@ public class OutputPanel extends VBox {
         // === TAB CONTENT (vertical container) ===
         VBox tabContent = new VBox(5); // 5px between elements
         tabContent.setPadding(new Insets(10));
-        tabContent.setStyle(StyleManager.getTabContentStyle()); // Dark background
+        tabContent.getStyleClass().add("tab-content-box"); // Dark background
 
         // === TEXT AREA FOR CONSOLE OUTPUT ===
         TextArea outputArea = new TextArea();
         outputArea.setEditable(false); // Read-only
         outputArea.setWrapText(true); // Wrap long lines
-        outputArea.setStyle(StyleManager.getOutputAreaStyle()); // Monospace font, dark background
+        outputArea.getStyleClass().add("output-area"); // Monospace font, dark background
 
         // TextArea stretches to full available tab height
         VBox.setVgrow(outputArea, Priority.ALWAYS);
 
         // === STDIN FIELD ===
-        // Lets the user answer a prompt from the running process (e.g. "y/n?").
+        // Lets the user answer a prompt from the running process (e.g. "y/n?"). Styled by
+        // the .text-field rule in app.css - TextField carries that style class by default.
         TextField inputField = new TextField();
         inputField.setPromptText(Constants.STDIN_PROMPT);
-        StyleManager.styleTextField(inputField);
         inputField.setOnAction(e -> {
             String line = inputField.getText();
             if (!line.isEmpty()) {
@@ -148,7 +149,7 @@ public class OutputPanel extends VBox {
         HBox controlBox = new HBox(8); // 8px between buttons
 
         // === STOP BUTTON ===
-        Button stopBtn = StyleManager.createSmallButton("⏹ STOP", StyleManager.DANGER_BUTTON);
+        Button stopBtn = StyleManager.createSmallButton("⏹ STOP", StyleManager.BTN_DANGER);
         stopBtn.setOnAction(e -> {
             // Check that runner is not null before calling stop()
             if (runner != null) {
@@ -157,7 +158,7 @@ public class OutputPanel extends VBox {
         });
 
         // === CLEAR BUTTON ===
-        Button clearBtn = StyleManager.createSmallButton("🗑 CLEAR", StyleManager.UTIL_BUTTON);
+        Button clearBtn = StyleManager.createSmallButton("🗑 CLEAR", StyleManager.BTN_NEUTRAL);
         clearBtn.setOnAction(e -> outputArea.clear()); // Clear text in TextArea
 
         controlBox.getChildren().addAll(stopBtn, clearBtn);

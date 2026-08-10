@@ -61,9 +61,10 @@ public class ScriptCard extends VBox {
         setPadding(new Insets(15));
 
         // === CARD STYLING ===
-        // Dark background with gradient and rounded corners; the drop shadow lives in the
-        // CSS (StyleManager.getCardStyle()), not here.
-        setStyle(StyleManager.getCardStyle());
+        // Dark background, rounded corners, drop shadow and the hover look all live in
+        // app.css (.script-card / .script-card:hover) - a CSS pseudo-class can't be
+        // clobbered by another setStyle() call the way a JS mouse-hover handler could.
+        getStyleClass().add("script-card");
 
         // Rasterize the card so the CSS Gaussian blur isn't recomputed every scroll frame.
         setCache(true);
@@ -74,7 +75,7 @@ public class ScriptCard extends VBox {
 
         // === WORKING DIRECTORY PATH ===
         Label pathLabel = new Label("📁 " + entry.getWorkingDir());
-        pathLabel.setStyle(StyleManager.getCardPathStyle()); // Gray italic
+        pathLabel.getStyleClass().add("script-card-path"); // Gray italic
         pathLabel.setWrapText(true); // Wrap long paths
 
         // === COMMAND LIST ===
@@ -85,9 +86,6 @@ public class ScriptCard extends VBox {
 
         // Add all elements in vertical order
         getChildren().addAll(titleBox, pathLabel, commandsBox, buttonBox);
-
-        // Add hover highlight effect
-        setupHoverEffect();
     }
 
     /**
@@ -101,7 +99,7 @@ public class ScriptCard extends VBox {
 
         // === SCRIPT NAME ===
         Label nameLabel = new Label(entry.getName());
-        nameLabel.setStyle(StyleManager.getCardTitleStyle()); // Large white text
+        nameLabel.getStyleClass().add("script-card-title"); // Large white text
 
         // === STATUS INDICATOR ===
         // By default set status to "stopped" (⚫)
@@ -125,7 +123,7 @@ public class ScriptCard extends VBox {
         // Iterate through all script commands
         for (String cmd : entry.getCommands()) {
             Label cmdLabel = new Label("▶ " + cmd);
-            cmdLabel.setStyle(StyleManager.getCardCommandStyle()); // Monospace font
+            cmdLabel.getStyleClass().add("script-card-command"); // Monospace font
             commandsBox.getChildren().add(cmdLabel);
         }
 
@@ -146,30 +144,19 @@ public class ScriptCard extends VBox {
         buttonBox.setPadding(new Insets(8, 0, 0, 0)); // Top padding
 
         // === RUN BUTTON ===
-        Button runBtn = StyleManager.createSmallButton("▶ RUN", StyleManager.ACCENT_GREEN);
+        Button runBtn = StyleManager.createSmallButton("▶ RUN", StyleManager.BTN_ACCENT);
         runBtn.setOnAction(e -> onRun.accept(entry)); // Calls handleRunScript() in MainWindow
 
         // === EDIT BUTTON ===
-        Button editBtn = StyleManager.createSmallButton("✎ EDIT", StyleManager.ACCENT_BLUE);
+        Button editBtn = StyleManager.createSmallButton("✎ EDIT", StyleManager.BTN_NEUTRAL);
         editBtn.setOnAction(e -> onEdit.accept(entry)); // Opens edit dialog
 
         // === DELETE BUTTON ===
-        Button deleteBtn = StyleManager.createSmallButton("✖ DELETE", StyleManager.ACCENT_RED);
+        Button deleteBtn = StyleManager.createSmallButton("✖ DELETE", StyleManager.BTN_DANGER);
         deleteBtn.setOnAction(e -> onDelete.accept(entry)); // Opens confirmation dialog
 
         buttonBox.getChildren().addAll(runBtn, editBtn, deleteBtn);
         return buttonBox;
-    }
-
-    /**
-     * MOUSE HOVER EFFECT
-     *
-     * On hover: brighter background + purple border + stronger shadow
-     * On exit: return to normal appearance
-     */
-    private void setupHoverEffect() {
-        setOnMouseEntered(e -> setStyle(StyleManager.getCardHoverStyle()));
-        setOnMouseExited(e -> setStyle(StyleManager.getCardStyle()));
     }
 
     // === GETTERS FOR ELEMENT ACCESS ===

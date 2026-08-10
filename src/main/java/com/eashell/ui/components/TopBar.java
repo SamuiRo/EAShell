@@ -59,15 +59,15 @@ public class TopBar extends HBox {
         setAlignment(Pos.CENTER_LEFT);
 
         // Dark gradient background with purple bottom border
-        setStyle(StyleManager.getTopBarStyle());
+        getStyleClass().add("top-bar");
 
         // === APPLICATION NAME "⚡ Shell" ===
         Label title = new Label(Constants.TITLE_LABEL); // "⚡ Shell"
-        title.setStyle(StyleManager.getTitleStyle()); // Large text with gradient and glow
+        title.getStyleClass().add("app-title"); // Large text with gradient and glow
 
         // === RUNNING SCRIPT COUNTER ===
         statusLabel.setId("global-status");
-        statusLabel.setStyle(StyleManager.getStatusLabelStyle()); // Purple text
+        statusLabel.getStyleClass().add("status-label"); // Purple text
         // Text updates automatically every second via startStatusUpdater()
 
         // === SPACER (EXPANDABLE SPACE) ===
@@ -76,11 +76,11 @@ public class TopBar extends HBox {
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
         // === ADD NEW SCRIPT BUTTON ===
-        Button addButton = StyleManager.createStyledButton("+ NEW SCRIPT", StyleManager.PRIMARY_BUTTON);
+        Button addButton = StyleManager.createStyledButton("+ NEW SCRIPT", StyleManager.BTN_PRIMARY);
         addButton.setOnAction(e -> onAddScript.run()); // Opens script creation dialog
 
         // === STOP ALL SCRIPTS BUTTON ===
-        Button stopAllButton = StyleManager.createStyledButton("⏹ STOP ALL", StyleManager.DANGER_BUTTON);
+        Button stopAllButton = StyleManager.createStyledButton("⏹ STOP ALL", StyleManager.BTN_DANGER);
         stopAllButton.setOnAction(e -> onStopAll.run()); // Stops all active processes
 
         // Add all elements in horizontal order

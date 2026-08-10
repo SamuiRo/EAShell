@@ -36,8 +36,15 @@ public class ScriptDialog {
         dialog.setHeaderText(header);
 
         DialogPane dialogPane = dialog.getDialogPane();
-        dialogPane.setStyle(StyleManager.getDialogStyle());
+        // A Dialog owns its own Scene, so it never inherits the main window's stylesheet -
+        // it must be attached here too, or the dialog falls back to plain default styling.
+        dialogPane.getStylesheets().add(ScriptDialog.class.getResource("/styles/app.css").toExternalForm());
+        dialogPane.getStyleClass().add("app-dialog");
         dialogPane.getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+        // The dialog's built-in OK/Cancel buttons aren't created by StyleManager's factory
+        // methods, so they need their role classes added directly here.
+        dialogPane.lookupButton(ButtonType.OK).getStyleClass().addAll("btn-large", StyleManager.BTN_ACCENT);
+        dialogPane.lookupButton(ButtonType.CANCEL).getStyleClass().addAll("btn-large", StyleManager.BTN_NEUTRAL);
 
         GridPane grid = createFormGrid(dialog, existingEntry, existingEntries);
         dialogPane.setContent(grid);
@@ -93,13 +100,12 @@ public class ScriptDialog {
         grid.setVgap(10);
         grid.setPadding(new Insets(20));
 
-        // Name field
+        // Name field - styled by the .text-field rule in app.css (default style class)
         TextField nameField = new TextField();
         nameField.setPromptText("Script Name");
         if (existingEntry != null) {
             nameField.setText(existingEntry.getName());
         }
-        StyleManager.styleTextField(nameField);
 
         // Path field
         TextField pathField = new TextField();
@@ -107,10 +113,9 @@ public class ScriptDialog {
         if (existingEntry != null) {
             pathField.setText(existingEntry.getWorkingDir());
         }
-        StyleManager.styleTextField(pathField);
 
         // Browse button
-        Button browseBtn = StyleManager.createSmallButton("Browse", StyleManager.ACCENT_BLUE);
+        Button browseBtn = StyleManager.createSmallButton("Browse", StyleManager.BTN_NEUTRAL);
         browseBtn.setOnAction(e -> {
             DirectoryChooser dc = new DirectoryChooser();
             dc.setTitle("Select Working Directory");
@@ -134,7 +139,6 @@ public class ScriptDialog {
         if (existingEntry != null && existingEntry.getGroup() != null) {
             groupField.setValue(existingEntry.getGroup());
         }
-        StyleManager.styleComboBox(groupField);
 
         // Commands area
         TextArea commandsArea = new TextArea();
@@ -143,7 +147,6 @@ public class ScriptDialog {
         if (existingEntry != null) {
             commandsArea.setText(String.join("\n", existingEntry.getCommands()));
         }
-        StyleManager.styleTextArea(commandsArea);
 
         // Add to grid
         grid.add(StyleManager.createLabel("Name:"), 0, 0);

@@ -66,17 +66,17 @@ public class ScriptListPanel extends VBox {
         setPadding(new Insets(20));
 
         // Dark gradient panel background
-        setStyle(StyleManager.getPanelStyle());
+        getStyleClass().add("side-panel");
 
         // === HEADER "📋 SCRIPTS" ===
         Label header = new Label(Constants.SCRIPTS_HEADER); // "📋 SCRIPTS"
-        header.setStyle(StyleManager.getHeaderStyle()); // Purple glowing text
+        header.getStyleClass().add("panel-header"); // Purple glowing text
 
         // === SCROLLABLE AREA ===
-        // Allows scrolling the list if there are many scripts
+        // Allows scrolling the list if there are many scripts. Transparent background comes
+        // from the .scroll-pane rule in app.css - ScrollPane carries that class by default.
         ScrollPane scrollPane = new ScrollPane();
         scrollPane.setFitToWidth(true); // Cards stretch to full width
-        scrollPane.setStyle(StyleManager.getScrollPaneStyle()); // Transparent background
 
         // === CARD CONTAINER ===
         scriptListContainer = new VBox(10); // 10px between cards
@@ -156,9 +156,9 @@ public class ScriptListPanel extends VBox {
      */
     private HBox createGroupHeader(String groupName, List<ScriptEntry> groupEntries) {
         Label nameLabel = new Label(groupName);
-        nameLabel.setStyle(StyleManager.getGroupHeaderStyle());
+        nameLabel.getStyleClass().add("group-header-label");
 
-        Button runGroupBtn = StyleManager.createSmallButton(Constants.GROUP_RUN_BUTTON, StyleManager.ACCENT_GREEN);
+        Button runGroupBtn = StyleManager.createSmallButton(Constants.GROUP_RUN_BUTTON, StyleManager.BTN_ACCENT);
         runGroupBtn.setOnAction(e -> groupEntries.forEach(onRun));
         // Without this, clicking the button also toggles the TitledPane's expand/collapse.
         runGroupBtn.setOnMouseClicked(Event::consume);
@@ -176,7 +176,7 @@ public class ScriptListPanel extends VBox {
      */
     private void showEmptyMessage() {
         Label emptyLabel = new Label("No scripts added yet.\nClick 'NEW SCRIPT' to get started.");
-        emptyLabel.setStyle(StyleManager.getEmptyLabelStyle()); // Gray centered text
+        emptyLabel.getStyleClass().add("empty-list-label"); // Gray centered text
         emptyLabel.setAlignment(Pos.CENTER);
         scriptListContainer.getChildren().add(emptyLabel);
     }

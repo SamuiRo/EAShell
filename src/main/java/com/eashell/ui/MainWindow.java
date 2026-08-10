@@ -103,7 +103,7 @@ public class MainWindow {
         // === MAIN CONTAINER (BorderPane) ===
         // Allows positioning elements: top, center, bottom, left, right
         BorderPane root = new BorderPane();
-        root.setStyle(StyleManager.getRootStyle()); // Dark gradient background
+        root.getStyleClass().add("app-root"); // Dark gradient background
 
         // === TOP PANEL ===
         TopBar topBar = new TopBar(
@@ -115,8 +115,9 @@ public class MainWindow {
 
         // === SPLIT PANEL (SplitPane) ===
         // Allows resizing left/right sections by dragging the divider
+        // Styled via the .split-pane rule in app.css - SplitPane already carries that
+        // style class by default, nothing to add here.
         SplitPane splitPane = new SplitPane();
-        splitPane.setStyle(StyleManager.getSplitPaneStyle());
 
         // === LEFT PANEL - SCRIPT LIST ===
         scriptListPanel = new ScriptListPanel(
@@ -138,7 +139,7 @@ public class MainWindow {
 
         // === CREATE SCENE AND WINDOW ===
         Scene scene = new Scene(root, Constants.WINDOW_WIDTH, Constants.WINDOW_HEIGHT); // 1400x800
-        scene.getStylesheets().add(StyleManager.getStylesheet()); // CSS styles
+        scene.getStylesheets().add(getClass().getResource("/styles/app.css").toExternalForm());
         primaryStage.setScene(scene);
 
         // Window close handler - stop all processes
