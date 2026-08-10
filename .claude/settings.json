@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(mvn compile:*)",
+      "Bash(mvn test:*)",
+      "Bash(mvn clean:*)",
+      "Bash(mvn package:*)",
+      "Bash(mvn -q:*)",
+      "Bash(mvn -B:*)",
+      "Bash(java -version)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git show:*)",
+      "Bash(git ls-files:*)"
+    ],
+    "deny": [
+      "Read(./eashell_data.json)",
+      "Read(./target/**)",
+      "Read(./.idea/**)",
+      "Read(./**/*.jar)",
+      "Read(./**/*.exe)",
+      "Read(./**/*.class)",
+      "Read(./LICENSE)"
+    ]
+  }
+}

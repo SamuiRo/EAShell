@@ -1,6 +1,9 @@
 ### EA Shell ###
 eashell_data.json
 
+### Claude Code ###
+.claude/settings.local.json
+
 target/
 !.mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
