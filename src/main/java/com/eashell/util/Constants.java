@@ -7,12 +7,15 @@ import java.nio.file.Path;
 public class Constants {
     // Files
     public static final String DATA_FILE_NAME = "eashell_data.json";
-    // Per-user location, independent of the launch directory - required for an installed app,
-    // which cannot rely on being able to write next to its own executable.
-    public static final Path DATA_DIR = Path.of(System.getProperty("user.home"), ".eashell");
+    // Per-user (%USERPROFILE%\.eashell) by default, or <app dir>\data in portable mode -
+    // never the launch directory. See AppPaths for the resolution rules.
+    public static final Path DATA_DIR = AppPaths.dataDir();
     public static final Path DATA_FILE = DATA_DIR.resolve(DATA_FILE_NAME);
     // Old CWD-relative location, kept only to migrate existing users' data on first run.
-    public static final Path LEGACY_DATA_FILE = Path.of(DATA_FILE_NAME);
+    // Not used in portable mode: a portable copy must not adopt whatever file happens to sit
+    // in the directory it was launched from (pointing it at DATA_FILE makes the migration a no-op).
+    public static final Path LEGACY_DATA_FILE =
+            AppPaths.isPortable() ? DATA_FILE : Path.of(DATA_FILE_NAME);
     public static final Path LOCK_FILE = DATA_DIR.resolve("eashell.lock");
 
     // Buffer settings
@@ -36,6 +39,7 @@ public class Constants {
 
     // UI texts
     public static final String APP_TITLE = "EA Shell";
+    public static final String PORTABLE_TITLE_SUFFIX = " (portable)";
     public static final String TITLE_LABEL = "⚡ Shell";
     public static final String SCRIPTS_HEADER = "📋 SCRIPTS";
     public static final String OUTPUT_HEADER = "📟 CONSOLE";

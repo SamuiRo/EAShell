@@ -34,7 +34,7 @@ mvn clean javafx:run      # run from source (fastest feedback loop)
 mvn clean package         # → target/EAShell-<version>.jar + target/libs/ + target/EAShell.exe
 mvn test                  # JUnit 5; ScriptEntry + ScriptRepository have real coverage
 mvn -q compile            # syntax check without packaging
-powershell -File scripts/package.ps1   # self-contained app-image via jpackage, see PACKAGING.md
+powershell -File scripts/package.ps1   # portable app-image + ZIP via jpackage (or double-click build-portable.cmd)
 ```
 
 The Windows `.exe` from `mvn clean package` is produced by launch4j-maven-plugin and still requires a
@@ -143,9 +143,13 @@ Still-open traps:
 - **"Running: N" still counts queued scripts**, not just actively-executing ones - it reads
   `runningProcesses.size()`, and a queued runner is already in that map. Known, not fixed — item 26.
 - **Maven may not be on PATH here** — it exists only as a wrapper distribution under
-  `~/.m2/wrapper/dists/`. `scripts/package.ps1` checks for it now and fails clearly if missing
-  (item 30), but there's still no `mvnw`. The JDK at `C:\Program Files\Java\jdk-17` is a full JDK
+  `~/.m2/wrapper/dists/`. `scripts/package.ps1` falls back to that wrapper distribution when `mvn`
+  isn't on PATH and fails clearly if neither exists (item 30), but there's still no `mvnw`. The JDK at `C:\Program Files\Java\jdk-17` is a full JDK
   with `jpackage`/`jlink`.
+- **The data dir is resolved once, in `util/AppPaths`** (v2.1.0): `-Deashell.data.dir` override →
+  portable mode (`portable.txt` next to the exe/JAR, folder writable → `<app dir>\data`) →
+  `%USERPROFILE%\.eashell`. Never build a data path from `user.home` directly — go through
+  `Constants.DATA_DIR`. The marker name lives in both `AppPaths.PORTABLE_MARKER` and `package.ps1`.
 - **Diagnosing a packaged build:** the jpackage launcher runs the JVM as a *child* process, so the
   process you started looks dead (5 threads, 8 MB, no window handle) while the real app runs beside
   it. `docs/PACKAGING.md` §3 has the correct check.
@@ -153,7 +157,7 @@ Still-open traps:
 ## Files not to touch
 
 - `eashell_data.json` (repo root, legacy) and `%USERPROFILE%\.eashell\eashell_data.json` (current
-  location) — the user's real script list with real local paths. Git-ignored. **Never read, edit,
+  location), and `EAShell\data\eashell_data.json` inside any portable copy — the user's real script list with real local paths. Git-ignored. **Never read, edit,
   commit, or use its contents as example data.** If you need fixture data, invent it.
 - `target/` — build output.
 - `dependency-reduced-pom.xml` — stale leftover from a removed shade plugin; it does not affect the

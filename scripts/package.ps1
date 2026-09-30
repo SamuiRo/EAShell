@@ -1,18 +1,44 @@
-# Builds a self-contained EAShell app-image - no Java required on the target machine.
-# Run from the repository root: powershell -File scripts/package.ps1
+# Builds a self-contained, portable EAShell - no Java required on the target machine.
+# Run from the repository root: powershell -ExecutionPolicy Bypass -File scripts/package.ps1
 #
-# Output: target/dist/EAShell/EAShell.exe - copy the whole EAShell folder to distribute it
-# (it carries its own trimmed JRE). See docs/PACKAGING.md for the full runbook and the
-# optional MSI installer path (requires WiX Toolset, not covered by this script).
+# Output:
+#   target/dist/EAShell/                      - app-image (EAShell.exe + app/ + trimmed runtime/)
+#   target/dist/EAShell-<version>-portable.zip - the same folder, zipped, ready to hand out
+#
+# Both are in portable mode: a portable.txt next to EAShell.exe makes the app keep its data
+# in EAShell/data/ instead of %USERPROFILE%\.eashell, so the folder can live on a USB stick.
+# Pass -NoPortable to build a plain image that stores data per user instead.
+# See docs/PACKAGING.md for the full runbook and the (not yet built) MSI installer path.
+
+param(
+    [switch]$NoPortable,
+    [switch]$SkipTests
+)
 
 $ErrorActionPreference = "Stop"
+Set-Location (Split-Path -Parent $PSScriptRoot)
 
-if (-not (Get-Command mvn -ErrorAction SilentlyContinue)) {
-    Write-Error "mvn not found on PATH. Install Maven, or run its wrapper distribution's mvn.cmd directly."
+# Maven: prefer PATH, fall back to a Maven wrapper distribution already downloaded under
+# ~/.m2/wrapper/dists (IDEs leave one there) - see IMPROVEMENTS.md item 30.
+$mvn = (Get-Command mvn -ErrorAction SilentlyContinue).Source
+if (-not $mvn) {
+    $wrapperDists = Join-Path $env:USERPROFILE ".m2\wrapper\dists"
+    if (Test-Path $wrapperDists) {
+        $mvn = Get-ChildItem $wrapperDists -Recurse -Filter mvn.cmd -ErrorAction SilentlyContinue |
+            Where-Object { $_.Directory.Name -eq "bin" } |
+            Sort-Object FullName -Descending |
+            Select-Object -First 1 -ExpandProperty FullName
+    }
+}
+if (-not $mvn) {
+    Write-Error "Maven not found - neither 'mvn' on PATH nor a wrapper distribution under ~/.m2/wrapper/dists. Install Maven 3.8+ and retry."
     exit 1
 }
+Write-Host "Using Maven: $mvn"
 
-mvn clean package
+$mvnArgs = @("clean", "package")
+if ($SkipTests) { $mvnArgs += "-DskipTests" }
+& $mvn @mvnArgs
 if ($LASTEXITCODE -ne 0) { exit 1 }
 
 # Read the version from pom.xml rather than hardcoding it here too - see
@@ -48,4 +74,29 @@ if (-not (Test-Path $jpackage)) {
 
 if ($LASTEXITCODE -ne 0) { exit 1 }
 
-Write-Host "Built target/dist/EAShell/EAShell.exe - copy the whole EAShell folder to distribute it."
+$image = "target/dist/EAShell"
+
+if ($NoPortable) {
+    Write-Host "Built $image/EAShell.exe (per-user data in %USERPROFILE%\.eashell)."
+    exit 0
+}
+
+# The marker's name is AppPaths.PORTABLE_MARKER - keep the two in sync.
+@"
+EAShell portable mode.
+
+While this file sits next to EAShell.exe, scripts are stored in the 'data' folder
+beside it, so the whole EAShell folder can be moved or carried on a USB stick.
+
+Delete this file to store scripts per user in %USERPROFILE%\.eashell instead.
+The folder must be writable (not under C:\Program Files); otherwise EAShell
+falls back to %USERPROFILE%\.eashell automatically.
+"@ | Set-Content -Encoding UTF8 (Join-Path $image "portable.txt")
+
+$zip = "target/dist/EAShell-$version-portable.zip"
+if (Test-Path $zip) { Remove-Item $zip -Force }
+Compress-Archive -Path $image -DestinationPath $zip
+
+Write-Host ""
+Write-Host "Built $image/EAShell.exe (portable - data in $image/data)."
+Write-Host "Portable ZIP: $zip - unzip anywhere and run EAShell\EAShell.exe, no Java needed."

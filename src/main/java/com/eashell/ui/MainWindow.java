@@ -8,6 +8,7 @@ import com.eashell.ui.components.ScriptListPanel;
 import com.eashell.ui.components.TopBar;
 import com.eashell.ui.dialogs.DeleteConfirmDialog;
 import com.eashell.ui.dialogs.ScriptDialog;
+import com.eashell.util.AppPaths;
 import com.eashell.util.Constants;
 import com.eashell.util.StyleManager;
 import javafx.application.Platform;
@@ -90,7 +91,8 @@ public class MainWindow {
      * Called from main() when starting the application.
      */
     public void show() {
-        primaryStage.setTitle(Constants.APP_TITLE); // "EA Shell"
+        primaryStage.setTitle(Constants.APP_TITLE // "EA Shell"
+                + (AppPaths.isPortable() ? Constants.PORTABLE_TITLE_SUFFIX : ""));
 
         // Data file was invalid JSON and got reset - tell the user before anything else,
         // since otherwise an empty script list with no explanation looks like data loss.

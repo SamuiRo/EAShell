@@ -66,13 +66,22 @@ EAShell is a lightweight desktop application designed to simplify working with c
 
 #### Option 1: Standalone build (Windows, no Java required)
 
+Double-click **`build-portable.cmd`**, or:
+
 ```bash
-powershell -File scripts/package.ps1
+powershell -ExecutionPolicy Bypass -File scripts/package.ps1
 ```
 
-This produces `target/dist/EAShell/` - a self-contained folder (its own bundled Java runtime
-included) with `EAShell.exe` inside. Copy the whole `EAShell` folder wherever you want to run it
-from (not from inside `target/`, since `mvn clean` wipes that directory). See
+This produces **`target/dist/EAShell-<version>-portable.zip`** (~32 MB) - unzip it anywhere (a
+USB stick works) and run `EAShell\EAShell.exe`. It carries its own trimmed Java runtime, so the
+target machine needs no Java. The build machine needs JDK 17+; Maven is found on `PATH` or, failing
+that, in an existing wrapper distribution under `~/.m2/wrapper/dists`.
+
+**Portable mode:** the zipped folder contains a `portable.txt` next to `EAShell.exe`, which makes
+the app keep its scripts in `EAShell\data\` instead of `%USERPROFILE%\.eashell` - the folder is
+fully self-contained and the window title shows *(portable)*. Delete `portable.txt` to switch to
+per-user storage (also what happens automatically if the folder isn't writable, e.g. under
+`C:\Program Files`). Build with `-NoPortable` to omit it. See
 [`docs/PACKAGING.md`](docs/PACKAGING.md) for details, including the (not yet built) MSI installer path.
 
 #### Option 2: Build from Source
@@ -86,7 +95,7 @@ cd EAShell
 mvn clean package
 
 # Run the application
-java -jar target/EAShell-2.0.1.jar
+java -jar target/EAShell-2.1.0.jar
 ```
 
 #### Option 3: Run with Maven

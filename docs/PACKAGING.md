@@ -315,6 +315,15 @@ places the version number is duplicated.
 - [ ] `--win-upgrade-uuid` generated and recorded — not applicable yet, no MSI (see below)
 - [ ] Launch4j block removed from `pom.xml` — kept intentionally; see note below
 
+- [x] **Portable mode + ZIP** (v2.1.0) — `scripts/package.ps1` writes `portable.txt` into the
+      image and zips it to `target/dist/EAShell-<version>-portable.zip` (31.8 MB). With the marker
+      present, data goes to `EAShell\data\` (`util/AppPaths`). Verified: unzipped to a fresh
+      folder, launched with `PATH=C:\Windows\system32;C:\Windows` and `JAVA_HOME` empty, from
+      `C:\Windows` as working dir — window titled "EA Shell (portable)", lock file created in
+      `EAShell\data\`. `-NoPortable` skips the marker and the ZIP. `build-portable.cmd` in the
+      repo root wraps the script for double-click use, and the script now falls back to the
+      Maven wrapper distribution under `~/.m2/wrapper/dists` when `mvn` isn't on `PATH`.
+
 **Not done in this pass:** the MSI installer (§6) needs WiX Toolset, which isn't installed on
 this machine. What exists today is the Level 1+2 app-image only (`scripts/package.ps1`) — a
 portable folder (`target/dist/EAShell/`) you copy wherever you want to run it, not a Start

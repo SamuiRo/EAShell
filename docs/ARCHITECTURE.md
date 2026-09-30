@@ -267,6 +267,13 @@ ALL - was freezing the window for several seconds.
 (`Constants.DATA_FILE`), independent of the launch directory. An existing CWD-relative file
 (`Constants.LEGACY_DATA_FILE`) is *copied* (not moved) to the new location on first run.
 
+The directory is chosen once at startup by `util/AppPaths` (v2.1.0), in this order:
+`-Deashell.data.dir=<path>` override → **portable mode** (a `portable.txt` next to `EAShell.exe`,
+or next to the JAR for `java -jar`, and that folder is writable) → `<app dir>\data\` → otherwise
+`%USERPROFILE%\.eashell\`. The lock file follows the data dir, so each portable copy has its own
+single-instance lock. Legacy CWD migration is disabled in portable mode, so a portable copy never
+adopts a stray file from wherever it was launched.
+
 ```json
 [
   {

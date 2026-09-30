@@ -5,7 +5,7 @@
 
     <groupId>com.ealshell</groupId>
     <artifactId>EAShell</artifactId>
-    <version>2.0.2</version>
+    <version>2.1.0</version>
 
     <name>EAShell</name>
     <url>http://www.example.com</url>
@@ -224,12 +224,12 @@
                                 </opts>
                             </jre>
                             <versionInfo>
-                                <fileVersion>2.0.1.0</fileVersion>
-                                <txtFileVersion>2.0.1</txtFileVersion>
+                                <fileVersion>2.1.0.0</fileVersion>
+                                <txtFileVersion>2.1.0</txtFileVersion>
                                 <fileDescription>EAShell - Command Line Interface Launcher</fileDescription>
                                 <copyright>Copyright © 2025</copyright>
-                                <productVersion>2.0.1.0</productVersion>
-                                <txtProductVersion>2.0.1</txtProductVersion>
+                                <productVersion>2.1.0.0</productVersion>
+                                <txtProductVersion>2.1.0</txtProductVersion>
                                 <productName>EAShell</productName>
                                 <internalName>EAShell</internalName>
                                 <originalFilename>EAShell.exe</originalFilename>
