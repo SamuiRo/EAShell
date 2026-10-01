@@ -34,7 +34,7 @@ mvn clean javafx:run      # run from source (fastest feedback loop)
 mvn clean package         # → target/EAShell-<version>.jar + target/libs/ + target/EAShell.exe
 mvn test                  # JUnit 5; ScriptEntry + ScriptRepository have real coverage
 mvn -q compile            # syntax check without packaging
-powershell -File scripts/package.ps1   # portable app-image + ZIP via jpackage (or double-click build-portable.cmd)
+powershell -File scripts/package.ps1   # portable app-image + ZIP into dist/ (or build-portable.cmd / run.cmd)
 ```
 
 The Windows `.exe` from `mvn clean package` is produced by launch4j-maven-plugin and still requires a
@@ -143,8 +143,9 @@ Still-open traps:
 - **"Running: N" still counts queued scripts**, not just actively-executing ones - it reads
   `runningProcesses.size()`, and a queued runner is already in that map. Known, not fixed — item 26.
 - **Maven may not be on PATH here** — it exists only as a wrapper distribution under
-  `~/.m2/wrapper/dists/`. `scripts/package.ps1` falls back to that wrapper distribution when `mvn`
-  isn't on PATH and fails clearly if neither exists (item 30), but there's still no `mvnw`. The JDK at `C:\Program Files\Java\jdk-17` is a full JDK
+  `~/.m2/wrapper/dists/`. `scripts/package.ps1` needs nothing preinstalled: it looks for a JDK 17+
+  and Maven in the usual places and, failing that, downloads them into `.tools\` (git-ignored) —
+  keep it that way, a fresh clone on a machine with no Java must still build. There's still no `mvnw`. The JDK at `C:\Program Files\Java\jdk-17` is a full JDK
   with `jpackage`/`jlink`.
 - **The data dir is resolved once, in `util/AppPaths`** (v2.1.0): `-Deashell.data.dir` override →
   portable mode (`portable.txt` next to the exe/JAR, folder writable → `<app dir>\data`) →
@@ -159,7 +160,8 @@ Still-open traps:
 - `eashell_data.json` (repo root, legacy) and `%USERPROFILE%\.eashell\eashell_data.json` (current
   location), and `EAShell\data\eashell_data.json` inside any portable copy — the user's real script list with real local paths. Git-ignored. **Never read, edit,
   commit, or use its contents as example data.** If you need fixture data, invent it.
-- `target/` — build output.
+- `target/`, `dist/`, `.tools/` — build output, the installed portable app (with the user's data in
+  `dist/EAShell/data/`), and downloaded JDK/Maven.
 - `dependency-reduced-pom.xml` — stale leftover from a removed shade plugin; it does not affect the
   build. Delete it as its own change, don't edit it.
 - `.idea/` — IDE state.

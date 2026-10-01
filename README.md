@@ -66,16 +66,26 @@ EAShell is a lightweight desktop application designed to simplify working with c
 
 #### Option 1: Standalone build (Windows, no Java required)
 
-Double-click **`build-portable.cmd`**, or:
+**Nothing needs to be installed first** - no Java, no Maven. On a fresh clone:
 
-```bash
-powershell -ExecutionPolicy Bypass -File scripts/package.ps1
-```
+- **`run.cmd`** - double-click. The first time it builds the app (a few minutes), then starts
+  `dist\EAShell\EAShell.exe`; later runs start it straight away.
+- **`build-portable.cmd`** - rebuild after pulling new code.
 
-This produces **`target/dist/EAShell-<version>-portable.zip`** (~32 MB) - unzip it anywhere (a
-USB stick works) and run `EAShell\EAShell.exe`. It carries its own trimmed Java runtime, so the
-target machine needs no Java. The build machine needs JDK 17+; Maven is found on `PATH` or, failing
-that, in an existing wrapper distribution under `~/.m2/wrapper/dists`.
+If no JDK 17+ or Maven is found (`JAVA_HOME`, `PATH`, `C:\Program Files\...`), the build downloads
+Eclipse Temurin 17 and Apache Maven into the repo's `.tools\` folder, verifying their checksums - no
+installer, no admin rights, nothing changed system-wide. Offline: put a JDK 17+ `.zip` into
+`.tools\` first. The first build needs internet for Maven dependencies either way.
+
+Output, in `dist\` (outside `target\`, so `mvn clean` doesn't touch it):
+
+- `dist\EAShell\` - the app itself, with its own trimmed Java runtime. Rebuilding replaces the
+  app but keeps `dist\EAShell\data\` (your scripts).
+- `dist\EAShell-<version>-portable.zip` (~32 MB) - **to use on another PC, copy just this**,
+  unzip anywhere (a USB stick works) and run `EAShell\EAShell.exe`. No Java needed there.
+
+> `target\EAShell.exe` from a plain `mvn package` is a different thing: a Launch4j wrapper that
+> **does** need Java 17+ installed. For another PC, use the ZIP above.
 
 **Portable mode:** the zipped folder contains a `portable.txt` next to `EAShell.exe`, which makes
 the app keep its scripts in `EAShell\data\` instead of `%USERPROFILE%\.eashell` - the folder is

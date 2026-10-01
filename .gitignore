@@ -1,5 +1,8 @@
 ### EA Shell ###
 eashell_data.json
+# JDK / Maven downloaded by scripts/package.ps1, and the built app (incl. its portable data)
+.tools/
+/dist/
 
 ### Claude Code ###
 .claude/settings.local.json

@@ -324,6 +324,21 @@ places the version number is duplicated.
       repo root wraps the script for double-click use, and the script now falls back to the
       Maven wrapper distribution under `~/.m2/wrapper/dists` when `mvn` isn't on `PATH`.
 
+- [x] **Zero-setup build on a clean PC** (v2.1.0) — `scripts/package.ps1` finds a JDK 17+ with
+      `jpackage` (`JAVA_HOME` → `java` on PATH → `.tools\jdk*` → common `C:\Program Files\...`
+      vendor dirs) and Maven (PATH → `.tools\apache-maven-*` → `~/.m2/wrapper/dists`). If either
+      is missing it downloads Temurin 17 (Adoptium API, SHA-256 checked) / Maven 3.9.9 (Maven
+      Central, SHA-512 checked) into `.tools\` (git-ignored). A JDK `.zip` dropped into `.tools\`
+      is used offline. The result is installed into `dist\` (git-ignored, survives `mvn clean`),
+      replacing everything except `dist\EAShell\data\`. `run.cmd` builds once and launches.
+      Verified on this machine with its existing JDK, including a rebuild preserving `data\`.
+      Clean-machine path verified with `-LocalToolsOnly` (ignores every installed JDK/Maven) on a
+      copy of the repo, `JAVA_HOME` empty, `PATH` = Windows dirs only, `USERPROFILE` pointed at an
+      empty dir: Temurin 17.0.20.1 + Maven 3.9.9 downloaded and checksum-verified, 18 tests
+      passed, app-image built — 35 s total, `.tools\` is 313 MB. The resulting
+      `dist\EAShell\EAShell.exe` launched with no Java on PATH ("EA Shell (portable)", 94 threads).
+      Note: faking `%ProgramFiles%` does not work for such a test — Windows resets it per process.
+
 **Not done in this pass:** the MSI installer (§6) needs WiX Toolset, which isn't installed on
 this machine. What exists today is the Level 1+2 app-image only (`scripts/package.ps1`) — a
 portable folder (`target/dist/EAShell/`) you copy wherever you want to run it, not a Start
